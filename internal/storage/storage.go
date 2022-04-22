@@ -105,10 +105,10 @@ func main(){
 			return -1, err
 		}
 
-		tsql:=fmt.Sprintf(`insert into bankacc (user_id, balance) 
-			values (@ID, @Bank) on conflict (user_id) 
-			do update set balance = (select balance + @Bank from bankacc where user_id = @ID) 
-			where bankacc.user_id = @ID`)
+		tsql:=fmt.Sprintf(`INSERT INTO bankacc (user_id, balance) 
+			VALUES (@ID, @Bank) ON CONFLICT (user_id) 
+			DO UPDATE SET BALANCE = (SELECT BALANCE + @Bank FROM bankacc WHERE user_id = @ID) 
+			WHERE bankacc.user_id = @ID`)
 		
 		result, err :=db.ExecContext(
 			ctx,
