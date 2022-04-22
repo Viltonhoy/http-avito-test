@@ -17,6 +17,7 @@ var user = "<postgres>"
 var password = "<root>"
 var database = "<localhost>"
 
+func main(){
 	//строка подключения
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
 		server, user, port, database)
@@ -34,12 +35,27 @@ var database = "<localhost>"
 	}
 	fmt.Printf("Connected!\n")
 
+
+
+
 	//ReadClient
 	count, err:=ReadClient()
 	if err !=nil {
 		log.Fatal("Error reading client", err.Error())
 	}
 	fmt.Printf("Read %d row(s) successfully.\n", count)
+
+
+
+	//UpdateClient
+	update, err:= UpdateClient("...")
+	if err != nil{
+		log.Fatal("Error updating Employee: ", err.Error())
+	}
+	fmt.Printf("Updated %d row(s) successfully.\n", update)
+
+
+
 
 	func ReadClient() (int, error) {
 		ctx:= context.Background()
@@ -50,7 +66,7 @@ var database = "<localhost>"
 			return -1, err
 		}
 
-		tsql := fmt.Sprintf("SELECT user_id, bankacc FROM users;")
+		tsql := fmt.Sprintf("SELECT user_id, balance FROM bankacc;")
 
 		//выполнить запрос
 		rows, err := db.QueryContext(ctx, tsql)
@@ -64,22 +80,24 @@ var database = "<localhost>"
 
 		//итерация наборов результатов
 		for rows.Next() {
-			var user_id, bankacc int64
+			var user_id, balance int64
 
 			//получить значение из строки
-			err:= rows.Scan(&user_id, &bankacc)
+			err:= rows.Scan(&user_id, &balance)
 			if err != nil{
 				return -1, err
 			}
 
-			fmt.Printf("ID: %d, BANK: %d", user_id, bankacc)
+			fmt.Printf("ID: %d, BANK: %d", user_id, balance)
 			count++
 		}
 
 		return count, nil
 	}
 
-	func UpdateClient(id int64, bankacc int64)(int64, error){
+
+
+	func UpdateClient(id int64, balance int64)(int64, error){
 		ctx:=context.Background()
 
 		err:=db.PingContext(ctx)
@@ -87,15 +105,19 @@ var database = "<localhost>"
 			return -1, err
 		}
 
-		tsql:=fmt.Sprintf("insert into users (user_id, bankacc) values (1, 5) on conflict (user_id) do update set bankacc = (select bankacc + 5 from users where user_id = 1) where userss.user_id = 1")
+		tsql:=fmt.Sprintf(`insert into bankacc (user_id, balance) 
+			values (@ID, @Bank) on conflict (user_id) 
+			do update set balance = (select balance + @Bank from bankacc where user_id = @ID) 
+			where bankacc.user_id = @ID`)
 		
 		result, err :=db.ExecContext(
 			ctx,
 			tsql,
 			sql.Named("ID", user_id),
-			sql.Named("Bank", bankacc))
+			sql.Named("Bank", balance))
 		if err != nil{
 			return -1, err
 		}
 		return result.RowsAffected()	
 	}
+
