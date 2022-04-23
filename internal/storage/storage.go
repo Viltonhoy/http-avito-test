@@ -9,22 +9,25 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var db *sql.DB
+type Store struct {
+	db *sql.DB
+}
 
-var server = "<localhost>"
-var port = 5432
-var user = "<postgres>"
-var password = "<root>"
-var database = "<localhost>"
+const (
+	server   = "<localhost>"
+	port     = 5432
+	user     = "<postgres>"
+	password = "<root>"
+	database = "<localhost>"
+)
 
-func main(){
+func NewStore() (*Store, error) {
 	//строка подключения
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
+	var connString = fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
 		server, user, port, database)
 
-	var err error
 	//создать пул соединений
-	db, err := sql.Open("sqlserver", connString)
+	var db, err = sql.Open("sqlserver", connString)
 	if err != nil {
 		log.Fatal("", err.Error())
 	}
@@ -34,90 +37,100 @@ func main(){
 		log.Fatal(err.Error())
 	}
 	fmt.Printf("Connected!\n")
+}
 
-
-
-
+func hand() {
 	//ReadClient
-	count, err:=ReadClient()
-	if err !=nil {
+	err := ReadClient()
+	if err != nil {
 		log.Fatal("Error reading client", err.Error())
 	}
-	fmt.Printf("Read %d row(s) successfully.\n", count)
-
-
 
 	//UpdateClient
-	update, err:= UpdateClient("...")
-	if err != nil{
+	err := UpdateClient(1, 1)
+	if err != nil {
 		log.Fatal("Error updating Employee: ", err.Error())
 	}
-	fmt.Printf("Updated %d row(s) successfully.\n", update)
 
+}
 
+func ReadClient() error {
 
+	ctx := context.Background()
 
-	func ReadClient() (int, error) {
-		ctx:= context.Background()
-
-		//Check if DB is alive
-		err:=db.PingContext(ctx)
-		if err != nil{
-			return -1, err
-		}
-
-		tsql := fmt.Sprintf("SELECT user_id, balance FROM bankacc;")
-
-		//выполнить запрос
-		rows, err := db.QueryContext(ctx, tsql)
-		if err !=nil{
-			return -1, err
-		}
-
-		defer rows.Close()
-
-		var count int
-
-		//итерация наборов результатов
-		for rows.Next() {
-			var user_id, balance int64
-
-			//получить значение из строки
-			err:= rows.Scan(&user_id, &balance)
-			if err != nil{
-				return -1, err
-			}
-
-			fmt.Printf("ID: %d, BANK: %d", user_id, balance)
-			count++
-		}
-
-		return count, nil
+	//Check if DB is alive
+	err := db.PingContext(ctx)
+	if err != nil {
+		return err
 	}
 
+	tsql := fmt.Sprintf("SELECT user_id, balance FROM bankacc;")
 
-
-	func UpdateClient(id int64, balance int64)(int64, error){
-		ctx:=context.Background()
-
-		err:=db.PingContext(ctx)
-		if err !=nil{
-			return -1, err
-		}
-
-		tsql:=fmt.Sprintf(`INSERT INTO bankacc (user_id, balance) 
-			VALUES (@ID, @Bank) ON CONFLICT (user_id) 
-			DO UPDATE SET BALANCE = (SELECT BALANCE + @Bank FROM bankacc WHERE user_id = @ID) 
-			WHERE bankacc.user_id = @ID`)
-		
-		result, err :=db.ExecContext(
-			ctx,
-			tsql,
-			sql.Named("ID", user_id),
-			sql.Named("Bank", balance))
-		if err != nil{
-			return -1, err
-		}
-		return result.RowsAffected()	
+	//выполнить запрос
+	rows, err := db.QueryContext(ctx, tsql)
+	if err != nil {
+		return err
 	}
 
+	defer rows.Close()
+
+	//итерация наборов результатов
+	for rows.Next() {
+		var user_id, balance int64
+
+		//получить значение из строки
+		err := rows.Scan(&user_id, &balance)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("ID: %d, BALANCE: %d", user_id, balance)
+	}
+
+	return nil
+}
+
+func UpdateClient(user_id int64, balance int64) error {
+
+	ctx := context.Background()
+	err := db.PingContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	tsql := fmt.Sprintf(`INSERT INTO bankacc (user_id, balance) 
+			VALUES ($ID, $BALANCE) ON CONFLICT (user_id) 
+			DO UPDATE SET balance = (SELECT balance + $BALANCE FROM bankacc WHERE user_id = $ID) 
+			WHERE bankacc.user_id = $ID`)
+
+	_, err = db.ExecContext(
+		ctx,
+		tsql,
+		sql.Named("ID", user_id),
+		sql.Named("BALANCE", balance))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func Transaction(user_id1, user_id2 int64, balance1, balance2 int64) error {
+
+	ctx := context.Background()
+	err := db.PingContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	tsql := fmt.Printf(`...`)
+
+	_, err = db.ExecContext(
+		ctx,
+		tsql,
+		sql.Named("ID", user_id),
+		sql.Named("BALANCE", balance))
+	if err != nil {
+		return err
+	}
+	return nil
+}
