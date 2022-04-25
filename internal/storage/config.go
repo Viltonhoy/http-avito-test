@@ -10,7 +10,7 @@ type ServerConfig struct {
 	Server   string
 	Port     int
 	User     string
-	Password int
+	Password string
 	Database string
 }
 
@@ -19,7 +19,7 @@ func New() *ServerConfig {
 		Server:   getEnv("SERVER", ""),
 		Port:     getEnvAsInt("SERVER_PORT", 1),
 		User:     getEnv("SERVER_USER", ""),
-		Password: getEnvAsInt("SERVER_PASSWORD", 1),
+		Password: getEnv("SERVER_PASSWORD", ""),
 		Database: getEnv("SERVER_DATABASE", ""),
 	}
 }

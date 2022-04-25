@@ -21,11 +21,11 @@ func init() {
 }
 
 func NewStore() error { //*Store, error
-	conf := config.New()
+	conf := New()
 
 	//строка подключения
 	var connString = fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
-		conf.Server, conf.User, conf.Port, conf.Database)
+		conf.Server, conf.User, conf.Password, conf.Port, conf.Database)
 
 	//создать пул соединений
 	var db, err = sql.Open("sqlserver", connString)
@@ -45,20 +45,20 @@ func (s *Store) Close() {
 	s.db.Close()
 }
 
-func hand() {
-	//ReadClient
-	err := ReadClient()
-	if err != nil {
-		log.Fatal("Error reading client", err.Error())
-	}
+// func hand() {
+// 	//ReadClient
+// 	err := ReadClient()
+// 	if err != nil {
+// 		log.Fatal("Error reading client", err.Error())
+// 	}
 
-	//UpdateClient
-	err := UpdateClient(1, 1)
-	if err != nil {
-		log.Fatal("Error updating Employee: ", err.Error())
-	}
+// 	//UpdateClient
+// 	err := UpdateClient(1, 1)
+// 	if err != nil {
+// 		log.Fatal("Error updating Employee: ", err.Error())
+// 	}
 
-}
+// }
 
 func ReadClient(s *Store) error {
 
