@@ -10,9 +10,11 @@ INSERT INTO bankacc (user_id, balance)
 			WHERE bankacc.user_id = $ID;
 GO
 
-UPDATE bankacc SET balance = (SELECT balance + -10 FROM bankacc WHERE user_id = 2);
-	INSERT INTO bankacc (user_id, balance) VALUES (1, 10) ON conflict (user_id) 
-	do UPDATE SET balance = (SELECT balance + 10 FROM bankacc WHERE user_id = 1);
+UPDATE bankacc SET balance = (SELECT balance + -$BALANCE FROM bankacc WHERE user_id = $ID);
+GO	
+
+INSERT INTO bankacc (user_id, balance) VALUES ($ID, $VALUE) ON CONFLICT (user_id) 
+	do UPDATE SET balance = (SELECT balance + $BALANCE FROM bankacc WHERE user_id = $ID);
 GO	
 
 SELECT * FROM bankacc;

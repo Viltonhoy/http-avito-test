@@ -10,21 +10,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Store struct {
+type Storage struct {
 	db *sql.DB
 }
 
 func init() {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Print("No .env file found")
 	}
 }
 
-func NewStore() error { //*Store, error
+func NewStore() (*Storage, error) {
 	conf := New()
 
 	//строка подключения
-	var connString = fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
+	var connString = fmt.Sprintf("server=<%s>;user id=<%s>;password=<%s>;port=%d;database=<%s>;",
 		conf.Server, conf.User, conf.Password, conf.Port, conf.Database)
 
 	//создать пул соединений
@@ -38,10 +38,10 @@ func NewStore() error { //*Store, error
 		log.Fatal(err.Error())
 	}
 	fmt.Printf("Connected!\n")
-	return nil
+	return &Storage{db}, nil
 }
 
-func (s *Store) Close() {
+func (s *Storage) Close() {
 	s.db.Close()
 }
 
@@ -60,7 +60,7 @@ func (s *Store) Close() {
 
 // }
 
-func ReadClient(s *Store) error {
+func (s *Storage) ReadClient(user_id, balance int64) error {
 
 	ctx := context.Background()
 
@@ -70,7 +70,7 @@ func ReadClient(s *Store) error {
 		return err
 	}
 
-	tsql := fmt.Sprintf("SELECT * FROM bankacc;")
+	tsql := "SELECT * FROM bankacc;"
 
 	//выполнить запрос
 	rows, err := s.db.QueryContext(ctx, tsql)
@@ -82,7 +82,6 @@ func ReadClient(s *Store) error {
 
 	//итерация наборов результатов
 	for rows.Next() {
-		var user_id, balance int64
 
 		//получить значение из строки
 		err := rows.Scan(&user_id, &balance)
@@ -90,13 +89,13 @@ func ReadClient(s *Store) error {
 			return err
 		}
 
-		fmt.Printf("ID: %d, BALANCE: %d", user_id, balance)
+		// fmt.Printf("ID: %d, BALANCE: %d", user_id, balance)
 	}
 
 	return nil
 }
 
-func UpdateClient(s *Store, user_id int64, balance int64) error {
+func (s *Storage) UpdateClient(user_id, balance int64) error {
 
 	ctx := context.Background()
 	err := s.db.PingContext(ctx)
@@ -104,10 +103,10 @@ func UpdateClient(s *Store, user_id int64, balance int64) error {
 		return err
 	}
 
-	tsql := fmt.Sprintf(`INSERT INTO bankacc (user_id, balance) 
+	tsql := `INSERT INTO bankacc (user_id, balance) 
 			VALUES ($ID, $BALANCE) ON CONFLICT (user_id) 
 			DO UPDATE SET balance = (SELECT balance + $BALANCE FROM bankacc WHERE user_id = $ID) 
-			WHERE bankacc.user_id = $ID`)
+			WHERE bankacc.user_id = $ID`
 
 	_, err = s.db.ExecContext(
 		ctx,
@@ -117,10 +116,10 @@ func UpdateClient(s *Store, user_id int64, balance int64) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return err
 }
 
-func Transaction(s *Store, user_id1, user_id2 int64, balance1, balance2 int64) error {
+func (s *Storage) MoneyTransfer(user_id1, user_id2, balance1, balance2 int64) error {
 
 	ctx := context.Background()
 	err := s.db.PingContext(ctx)
@@ -132,9 +131,9 @@ func Transaction(s *Store, user_id1, user_id2 int64, balance1, balance2 int64) e
 		return err
 	}
 
-	ftsql := fmt.Sprintf(`UPDATE bankacc SET balance = (SELECT balance + -$BALANCE FROM bankacc WHERE user_id = $ID);`)
+	ftsql := `UPDATE bankacc SET balance = (SELECT balance -$BALANCE FROM bankacc WHERE user_id = $ID);`
 
-	_, err = s.db.ExecContext(
+	_, err = tx.ExecContext(
 		ctx,
 		ftsql,
 		sql.Named("ID", user_id1),
@@ -144,10 +143,10 @@ func Transaction(s *Store, user_id1, user_id2 int64, balance1, balance2 int64) e
 		return err
 	}
 
-	stsql := fmt.Sprintf(`INSERT INTO bankacc (user_id, balance) VALUES ($ID, $VALUE) ON CONFLICT (user_id) 
-	do UPDATE SET balance = (SELECT balance + $BALANCE FROM bankacc WHERE user_id = $ID);`)
+	stsql := `INSERT INTO bankacc (user_id, balance) VALUES ($ID, $VALUE) ON CONFLICT (user_id) 
+	do UPDATE SET balance = (SELECT balance + $BALANCE FROM bankacc WHERE user_id = $ID);`
 
-	_, err = s.db.ExecContext(
+	_, err = tx.ExecContext(
 		ctx,
 		stsql,
 		sql.Named("ID", user_id2),
