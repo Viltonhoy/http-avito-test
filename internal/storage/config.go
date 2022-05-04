@@ -3,7 +3,6 @@ package storage
 import (
 	"os"
 	"strconv"
-	"strings"
 )
 
 type ServerConfig struct {
@@ -14,13 +13,23 @@ type ServerConfig struct {
 	Database string
 }
 
-func New() *ServerConfig {
+type ExchangeGener struct {
+	Key string
+}
+
+func NewServ() *ServerConfig {
 	return &ServerConfig{
 		Server:   getEnv("SERVER", ""),
 		Port:     getEnvAsInt("SERVER_PORT", 1),
 		User:     getEnv("SERVER_USER", ""),
 		Password: getEnv("SERVER_PASSWORD", ""),
 		Database: getEnv("SERVER_DATABASE", ""),
+	}
+}
+
+func NewExch() *ExchangeGener {
+	return &ExchangeGener{
+		Key: getEnv("API_KEY", ""),
 	}
 }
 
@@ -39,21 +48,21 @@ func getEnvAsInt(name string, defaultVal int) int {
 	return defaultVal
 }
 
-func getEnvAsBool(name string, defaultVal bool) bool {
-	valStr := getEnv(name, "")
-	if val, err := strconv.ParseBool(valStr); err == nil {
-		return val
-	}
-	return defaultVal
-}
+// func getEnvAsBool(name string, defaultVal bool) bool {
+// 	valStr := getEnv(name, "")
+// 	if val, err := strconv.ParseBool(valStr); err == nil {
+// 		return val
+// 	}
+// 	return defaultVal
+// }
 
-func getEnvAsSlice(name string, defaultVal []string, sep string) []string {
-	valStr := getEnv(name, "")
+// func getEnvAsSlice(name string, defaultVal []string, sep string) []string {
+// 	valStr := getEnv(name, "")
 
-	if valStr == "" {
-		return defaultVal
-	}
-	val := strings.Split(valStr, sep)
+// 	if valStr == "" {
+// 		return defaultVal
+// 	}
+// 	val := strings.Split(valStr, sep)
 
-	return val
-}
+// 	return val
+// }
