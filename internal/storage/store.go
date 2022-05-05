@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/blockloop/scan"
 	_ "github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
@@ -94,6 +95,14 @@ func (s *Storage) UpdateClient(user_id int64, balance decimal.Decimal) error {
 		logger.Error("failed to update client balance: %v", err)
 		return err
 	}
+
+	// htsql := `INSERT INTO transfer_history () VALUES ();`
+
+	// _, err = s.db.ExecContext(
+	// 	ctx,
+	// 	htsql,
+	// )
+
 	return err
 }
 
@@ -138,32 +147,6 @@ func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decima
 	return err
 }
 
-// func (s *Storage) ReadTransfHistoryList(user_id int64) (l *TransfList, err error) {
-// 	logger := s.logger
-// 	logger.Debugf("reading a history list")
-
-// 	ctx := context.Background()
-// 	tsql := "SELECT * FROM transfer_history WHERE user_id = $1"
-
-// 	rows, err := s.db.QueryContext(ctx, tsql, user_id)
-// 	if err != nil {
-// 		logger.Errorf("cannot return user list with specified ID: %d", user_id)
-// 		return TransfList{}, err
-// 	}
-
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		err := rows.Scan(&l.ID, &l.Type, &l.Sum, &l.Location, &l.Date)
-// 		if err != nil {
-// 			logger.Error(`cannot copy the columns in the current row into the values`)
-// 			return TransfList{}, err
-// 		}
-// 	}
-
-// 	return TransfList{l.ID, l.Type, l.Sum, l.Location, l.Date}, nil
-// }
-
 func (s *Storage) ReadTransfHistoryList(user_id int64) (l TransfList, err error) {
 	logger := s.logger
 	logger.Debug("reading a history list")
@@ -180,6 +163,11 @@ func (s *Storage) ReadTransfHistoryList(user_id int64) (l TransfList, err error)
 	defer rows.Close()
 
 	for rows.Next() {
-		err := rows.Scan(&l.ID, &l.Type, &l.Sum, &l.Location, &l.Date)
+		err := scan.Rows(&l, rows)
+		if err != nil {
+			logger.Error(`cannot copy the columns in the current row into the values`)
+			return TransfList{}, err
+		}
 	}
+	return l, nil
 }

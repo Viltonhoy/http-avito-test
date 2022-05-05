@@ -26,13 +26,29 @@ func main() {
 	h := server.Handler{
 		Store: s,
 	}
+
 	http.HandleFunc("/read", h.ReadUser)
 	http.HandleFunc("/update", h.AccountFunding)
 	http.HandleFunc("/transf", h.TransferCommand)
-
 	port := ":9090"
 	err = http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListernAndServe", err)
 	}
+
+	// var s, _ = storage.NewStore(sugar)
+	// h := server.Handler{
+	// 	Store: s,
+	// }
+
+	// router := mux.NewRouter().StrictSlash(true)
+	// router.HandleFunc("/read", h.ReadUser).Methods("POST")
+	// router.HandleFunc("/update", h.AccountFunding)
+	// router.HandleFunc("/transf", h.TransferCommand)
+
+	// port := ":9090"
+	// err = http.ListenAndServe(port, router)
+	// if err != nil {
+	// 	log.Fatal("ListernAndServe", err)
+	// }
 }

@@ -7,18 +7,16 @@ import (
 )
 
 type User struct {
-	ID      int64
-	Balance decimal.Decimal
+	ID      int64           `json:"ID"`
+	Balance decimal.Decimal `json:"Balance"`
 }
 
 type Transf struct {
-	ID       int64
-	Type     string
-	Sum      int64
-	Location string
-	Date     time.Time
+	ID       int64     `json:"ID"`
+	Type     string    `json:"Type"`
+	Sum      int64     `json:"Sum"`
+	Location string    `json:"Location"`
+	Date     time.Time `json:"Date"`
 }
 
-type TransfList struct {
-	List []Transf
-}
+type TransfList []Transf
