@@ -20,9 +20,8 @@ func main() {
 		log.Fatalf("zap.NewDevelopment: %v", err)
 	}
 	defer logger.Sync()
-	sugar := logger.Sugar()
 
-	var s, _ = storage.NewStore(sugar)
+	var s, _ = storage.NewStore(logger)
 	h := server.Handler{
 		Store: s,
 	}
