@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v4/log/zapadapter"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
+	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
@@ -34,6 +35,11 @@ func NewStore(logger *zap.Logger) (*Storage, error) {
 	// 	//создать пул соединений
 	pool, _ := pgxpool.ConnectConfig(ctx, config)
 
+	err := pool.Ping(ctx)
+	if err != nil {
+		logger.Sugar().Fatalf("connection is lost", err)
+	}
+
 	return &Storage{
 		logger: logger,
 		db:     pool,
@@ -47,31 +53,89 @@ func (s *Storage) Close() {
 
 func (s *Storage) ReadClient(user_id int64) (u User, err error) {
 	logger := s.logger
-	logger.Debug(`reading the balance of %d user`, user_id)
+	logger.Sugar().Debug(`reading the balance of %d user`, user_id)
 
 	ctx := context.Background()
 	tsql := "SELECT * FROM bankacc WHERE user_id = $1"
 
 	//выполнить запрос
-	rows, err := s.db.QueryRow(ctx, tsql, user_id)
+	err = s.db.QueryRow(ctx, tsql, user_id).Scan(&u.ID, &u.Balance)
 	if err != nil {
-		logger.Errorf("cannot return user with specified ID: %d", user_id)
+		logger.Sugar().Error("cannot return user with specified ID: %d", user_id)
 		return User{}, err
 	}
 
-	defer rows.Close()
+	return User{
+		u.ID,
+		u.Balance,
+	}, nil
+}
 
-	//итерация наборов результатов
-	for rows.Next() {
-		//получить значение из строки
-		err := rows.Scan(&u.ID, &u.Balance)
-		if err != nil {
-			logger.Error(`cannot copy the columns in the current row into the values`)
-			return User{}, err
-		}
+func (s *Storage) UpdateClient(user_id int64, balance decimal.Decimal) error {
+	logger := s.logger
+	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, balance)
+
+	ctx := context.Background()
+	tsql := `INSERT INTO bankacc (user_id, balance)
+			VALUES ($1, $2) ON CONFLICT (user_id)
+ 			DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
+ 			WHERE bankacc.user_id = $1;`
+
+	_, err := s.db.Exec(
+		ctx,
+		tsql,
+		user_id,
+		balance,
+	)
+	if err != nil {
+		logger.Sugar().Error("failed to update client balance: %v", err)
+		return err
 	}
 
-	return User{u.ID, u.Balance}, nil
+	return err
+}
+
+func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decimal) error {
+	logger := s.logger
+	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+
+	ctx := context.Background()
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	ftsql := `UPDATE bankacc SET balance = (SELECT balance - $2 FROM bankacc WHERE user_id = $1);`
+
+	_, err = tx.Exec(
+		ctx,
+		ftsql,
+		user_id1,
+		balance,
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	stsql := `INSERT INTO bankacc (user_id, balance)
+	 	VALUES ($1, $2) ON CONFLICT (user_id)
+	 	DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
+	 	WHERE bankacc.user_id = $1;`
+
+	_, err = tx.Exec(
+		ctx,
+		stsql,
+		user_id2,
+		balance,
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	return err
 }
 
 // func NewStore(logger *zap.SugaredLogger) (*Storage, error) {
