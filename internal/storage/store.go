@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/zapadapter"
@@ -56,14 +57,16 @@ func (s *Storage) ReadClient(user_id int64) (u User, err error) {
 	logger.Sugar().Debug(`reading the balance of %d user`, user_id)
 
 	ctx := context.Background()
-	tsql := "SELECT * FROM bankacc WHERE user_id = $1"
+	tsql := `SELECT SUM(amount) FROM posting WHERE account_id = $1;`
 
 	//выполнить запрос
-	err = s.db.QueryRow(ctx, tsql, user_id).Scan(&u.ID, &u.Balance)
+	err = s.db.QueryRow(ctx, tsql, user_id).Scan(&u.Balance)
 	if err != nil {
 		logger.Sugar().Error("cannot return user with specified ID: %d", user_id)
 		return User{}, err
 	}
+
+	u.ID = user_id
 
 	return User{
 		u.ID,
@@ -71,33 +74,11 @@ func (s *Storage) ReadClient(user_id int64) (u User, err error) {
 	}, nil
 }
 
-func (s *Storage) UpdateClient(user_id int64, balance decimal.Decimal) error {
+func (s *Storage) DepositOrWithdrawal(user_id int64, amount decimal.Decimal, tp string) (err error) {
 	logger := s.logger
-	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, balance)
+	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
-	ctx := context.Background()
-	tsql := `INSERT INTO bankacc (user_id, balance)
-			VALUES ($1, $2) ON CONFLICT (user_id)
- 			DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
- 			WHERE bankacc.user_id = $1;`
-
-	_, err := s.db.Exec(
-		ctx,
-		tsql,
-		user_id,
-		balance,
-	)
-	if err != nil {
-		logger.Sugar().Error("failed to update client balance: %v", err)
-		return err
-	}
-
-	return err
-}
-
-func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decimal) error {
-	logger := s.logger
-	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+	var t = time.Now()
 
 	ctx := context.Background()
 	tx, err := s.db.Begin(ctx)
@@ -105,29 +86,81 @@ func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decima
 		return err
 	}
 
-	ftsql := `UPDATE bankacc SET balance = (SELECT balance - $2 FROM bankacc WHERE user_id = $1);`
+	ftsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee)
+			VALUES ($1, $4, $5, $2, $3, '');`
+
+	_, err = tx.Exec(
+		ctx,
+		ftsql,
+		user_id,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		tp,
+		t.Format("2006"),
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to insert record: %v", err)
+		return err
+	}
+
+	stsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee)
+			VALUES (0, $3, 2022, -1 * $1, $2, '');`
+
+	_, err = tx.Exec(
+		ctx,
+		stsql,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		tp,
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to insert record: %v", err)
+		return err
+	}
+	err = tx.Commit(ctx)
+	return err
+}
+
+func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal) error {
+	logger := s.logger
+	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+
+	var t = time.Now()
+
+	ctx := context.Background()
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	ftsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee) VALUES ($1, 'Transfer', $4, $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
 		ftsql,
 		user_id1,
-		balance,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		t.Format("2006"),
+		fmt.Sprintf(`account_id: %d`, user_id2),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
 
-	stsql := `INSERT INTO bankacc (user_id, balance)
-	 	VALUES ($1, $2) ON CONFLICT (user_id)
-	 	DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
-	 	WHERE bankacc.user_id = $1;`
+	stsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee) VALUES ($1, 'transfer', $4, -1 * $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
 		stsql,
 		user_id2,
-		balance,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		t.Format("2006"),
+		fmt.Sprintf(`account_id: %d`, user_id1),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -138,157 +171,27 @@ func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decima
 	return err
 }
 
-// func NewStore(logger *zap.SugaredLogger) (*Storage, error) {
-// 	if logger == nil {
-// 		return nil, errors.New("no logger provided")
-// 	}
+func (s *Storage) ReadUserHistoryList(user_id int64, sort string) (l []Transf, err error) {
+	logger := s.logger
+	logger.Debug("reading a history list")
 
-// 	conf := NewServ()
-// 	//строка подключения
-// 	var connString = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", conf.User, conf.Password, conf.Database)
+	ctx := context.Background()
+	tsql := "SELECT account_id, journal, amount, date, addressee FROM posting WHERE account_id = $1 ORDER BY $2;"
 
-// 	//создать пул соединений
-// 	var db, err = sql.Open("postgres", connString)
-// 	if err != nil {
-// 		logger.Errorf("cannot connect using connection connString %s: %w", connString, err)
-// 		return nil, err
-// 	}
-// 	ctx := context.Background()
-// 	err = db.PingContext(ctx)
-// 	if err != nil {
-// 		logger.Fatal("connection is lost", err)
-// 	}
-// 	logger.Info("connected!\n")
-// 	return &Storage{db: db, logger: logger}, nil
-// }
+	rows, err := s.db.Query(ctx, tsql, user_id, sort)
+	if err != nil {
+		logger.Sugar().Errorf("cannot return user list with specified ID: %d", user_id)
+		return TransfList{}, err
+	}
 
-// func (s *Storage) Close() {
-// 	s.logger.Info("closing Storage connection")
-// 	s.db.Close()
-// }
-
-// func (s *Storage) ReadClient(user_id int64) (u User, err error) {
-// 	logger := s.logger
-// 	logger.Debugf(`reading the balance of %d user`, user_id)
-
-// 	ctx := context.Background()
-// 	tsql := "SELECT * FROM bankacc WHERE user_id = $1"
-
-// 	//выполнить запрос
-// 	rows, err := s.db.QueryContext(ctx, tsql, user_id)
-// 	if err != nil {
-// 		logger.Errorf("cannot return user with specified ID: %d", user_id)
-// 		return User{}, err
-// 	}
-
-// 	defer rows.Close()
-
-// 	//итерация наборов результатов
-// 	for rows.Next() {
-// 		//получить значение из строки
-// 		err := rows.Scan(&u.ID, &u.Balance)
-// 		if err != nil {
-// 			logger.Error(`cannot copy the columns in the current row into the values`)
-// 			return User{}, err
-// 		}
-// 	}
-
-// 	return User{u.ID, u.Balance}, nil
-// }
-
-// func (s *Storage) UpdateClient(user_id int64, balance decimal.Decimal) error {
-// 	logger := s.logger
-// 	logger.Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, balance)
-
-// 	ctx := context.Background()
-// 	tsql := `INSERT INTO bankacc (user_id, balance)
-// 			VALUES ($1, $2) ON CONFLICT (user_id)
-// 			DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
-// 			WHERE bankacc.user_id = $1;`
-
-// 	_, err := s.db.ExecContext(
-// 		ctx,
-// 		tsql,
-// 		user_id,
-// 		balance,
-// 	)
-// 	if err != nil {
-// 		logger.Error("failed to update client balance: %v", err)
-// 		return err
-// 	}
-
-// 	// htsql := `INSERT INTO transfer_history () VALUES ();`
-
-// 	// _, err = s.db.ExecContext(
-// 	// 	ctx,
-// 	// 	htsql,
-// 	// )
-
-// 	return err
-// }
-
-// func (s *Storage) MoneyTransfer(user_id1, user_id2 int64, balance decimal.Decimal) error {
-// 	logger := s.logger
-// 	logger.Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
-
-// 	ctx := context.Background()
-// 	tx, err := s.db.Begin()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	ftsql := `UPDATE bankacc SET balance = (SELECT balance - $2 FROM bankacc WHERE user_id = $1);`
-
-// 	_, err = tx.ExecContext(
-// 		ctx,
-// 		ftsql,
-// 		user_id1,
-// 		balance)
-// 	if err != nil {
-// 		tx.Rollback()
-// 		return err
-// 	}
-
-// 	stsql := `INSERT INTO bankacc (user_id, balance)
-// 	VALUES ($1, $2) ON CONFLICT (user_id)
-// 	DO UPDATE SET balance = (SELECT balance + $2 FROM bankacc WHERE user_id = $1)
-// 	WHERE bankacc.user_id = $1;`
-
-// 	_, err = tx.ExecContext(
-// 		ctx,
-// 		stsql,
-// 		user_id2,
-// 		balance)
-// 	if err != nil {
-// 		tx.Rollback()
-// 		return err
-// 	}
-
-// 	err = tx.Commit()
-// 	return err
-// }
-
-// func (s *Storage) ReadTransfHistoryList(user_id int64) (l TransfList, err error) {
-// 	logger := s.logger
-// 	logger.Debug("reading a history list")
-
-// 	ctx := context.Background()
-// 	tsql := "SELECT * FROM transfer_history WHERE user_id = $1;"
-
-// 	rows, err := s.db.QueryContext(ctx, tsql, user_id)
-// 	if err != nil {
-// 		logger.Errorf("cannot return user list with specified ID: %d", user_id)
-// 		return TransfList{}, err
-// 	}
-
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		err := scan.Rows(&l, rows)
-// 		if err != nil {
-// 			logger.Error(`cannot copy the columns in the current row into the values`)
-// 			return TransfList{}, err
-// 		}
-// 	}
-// 	return l, nil
-// }
+	var list []Transf
+	for rows.Next() {
+		var l Transf
+		err := rows.Scan(&l.ID, &l.Type, &l.Sum, &l.Date, &l.Addressee)
+		if err != nil {
+			s.logger.Error("scanning row", zap.Error(err))
+		}
+		list = append(list, l)
+	}
+	return list, nil
+}

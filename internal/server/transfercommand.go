@@ -10,9 +10,9 @@ import (
 )
 
 type jsTransferInf struct {
-	ID_1    int64
-	ID_2    int64
-	Balance float32
+	ID_1   int64
+	ID_2   int64
+	Amount float32
 }
 
 func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
@@ -25,9 +25,9 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newBalance = decimal.NewFromFloat32(hand.Balance).Mul(decimal.NewFromInt(100))
+	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	err = h.Store.MoneyTransfer(hand.ID_1, hand.ID_2, newBalance)
+	err = h.Store.Transfer(hand.ID_1, hand.ID_2, newBalance)
 	if err != nil {
 		log.Fatal("Error transfer client", err.Error())
 		return

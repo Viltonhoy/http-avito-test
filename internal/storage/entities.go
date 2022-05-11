@@ -12,11 +12,11 @@ type User struct {
 }
 
 type Transf struct {
-	ID       int64     `json:"ID"`
-	Type     string    `json:"Type"`
-	Sum      int64     `json:"Sum"`
-	Location string    `json:"Location"`
-	Date     time.Time `json:"Date"`
+	ID        int64     `json:"ID"`
+	Type      string    `json:"Type"`
+	Sum       int64     `json:"Sum"`
+	Date      time.Time `json:"Date"`
+	Addressee string    `json:"Location"`
 }
 
 type TransfList []Transf

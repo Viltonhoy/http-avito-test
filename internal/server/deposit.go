@@ -9,25 +9,25 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type jsFundingInf struct {
+type jsDeposInf struct {
 	User_id int64
-	Balance float32
+	Amount  float32
 }
 
-func (h *Handler) AccountFunding(w http.ResponseWriter, r *http.Request) {
-	var hand *jsFundingInf
+func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
+	var hand *jsDeposInf
 
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
 		http.Error(w, "Empty request body", http.StatusBadRequest)
-		//http.Error(w, "Missing Fields \"ID\", \"Balance\"", http.StatusBadRequest)
 		return
 	}
 
-	var newBalance = decimal.NewFromFloat32(hand.Balance).Mul(decimal.NewFromInt(100))
+	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
+	var tp = "Deposit"
 
-	err = h.Store.UpdateClient(hand.User_id, newBalance)
+	err = h.Store.DepositOrWithdrawal(hand.User_id, newBalance, tp)
 	if err != nil {
 		log.Fatal("Error updating client", err.Error())
 		return

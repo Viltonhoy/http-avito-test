@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"http-avito-test/internal/exchanger"
 	"io/ioutil"
 	"log"
@@ -22,14 +23,18 @@ type returnReader struct {
 
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	var hand *jsReaderInf
-	//vars := mux.Vars(r)
-	//key := vars["key"]
 
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
+		fmt.Println("Error", err)
 		http.Error(w, "Empty request body", http.StatusBadRequest)
+		return
+	}
+
+	if hand.User_id <= 0 {
+		http.Error(w, "Missing Field \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
