@@ -16,7 +16,7 @@ type Transf struct {
 	Type      string    `json:"Type"`
 	Sum       int64     `json:"Sum"`
 	Date      time.Time `json:"Date"`
-	Addressee string    `json:"Location"`
+	Addressee string    `json:"Addressee"`
 }
 
 type TransfList []Transf
