@@ -25,10 +25,9 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(-100))
-	var tp = "Withdrawal"
+	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	err = h.Store.DepositOrWithdrawal(hand.User_id, newBalance, tp)
+	err = h.Store.Withdrawal(hand.User_id, newBalance, r.Context())
 	if err != nil {
 		log.Fatal("Error updating client", err.Error())
 		return

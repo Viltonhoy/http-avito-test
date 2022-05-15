@@ -22,7 +22,7 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hist, err := h.Store.ReadUserHistoryList(hand.User_id, hand.Sort)
+	hist, err := h.Store.ReadUserHistoryList(hand.User_id, hand.Sort, r.Context())
 	if err != nil {
 		log.Fatal("Error reading history", err.Error())
 	}

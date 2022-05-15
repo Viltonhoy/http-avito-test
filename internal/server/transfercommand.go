@@ -27,7 +27,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	err = h.Store.Transfer(hand.ID_1, hand.ID_2, newBalance)
+	err = h.Store.Transfer(hand.ID_1, hand.ID_2, newBalance, r.Context())
 	if err != nil {
 		log.Fatal("Error transfer client", err.Error())
 		return

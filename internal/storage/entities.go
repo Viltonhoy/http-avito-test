@@ -20,3 +20,8 @@ type Transf struct {
 }
 
 type TransfList []Transf
+
+type Balance struct {
+	ID  int64
+	Sum decimal.Decimal
+}

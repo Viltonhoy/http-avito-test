@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
@@ -23,7 +24,7 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		m.EXPECT().ReadClient(int64(1)).Return(storage.User{
+		m.EXPECT().ReadClient(int64(1), context.Background()).Return(storage.User{
 			ID:      1,
 			Balance: decimal.NewFromInt(10000),
 		}, nil)
@@ -44,31 +45,52 @@ func TestReadUser(t *testing.T) {
 		assert.Equal(t, string(resptest), string(body))
 	})
 
+	// t.Run("", func(t *testing.T) {
+	// 	ctrl := gomock.NewController(t)
+	// 	defer ctrl.Finish()
+
+	// 	m := NewMockStorager(ctrl)
+
+	// 	m.EXPECT().ReadClient(nil, context.Background())
+	// })
+
 	t.Run("empty request body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", nil)
 		w := httptest.NewRecorder()
 
 		s := Handler{
-			Store: nil,
+			Store: m,
 		}
 
 		s.ReadUser(w, req)
-		body, _ := ioutil.ReadAll(w.Body)
+		body, err := ioutil.ReadAll(w.Body)
+		assert.NoError(t, err)
 
 		assert.Equal(t, "Empty request body\n", string(body))
 	})
 
 	t.Run("wrong User_id value", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+
 		arg := bytes.NewBuffer([]byte(`{"User_id":0, "Currency":""}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
 		s := Handler{
-			Store: nil,
+			Store: m,
 		}
 
 		s.ReadUser(w, req)
-		body, _ := ioutil.ReadAll(w.Body)
+		body, err := ioutil.ReadAll(w.Body)
+		assert.NoError(t, err)
 
 		assert.Equal(t, "Missing Field \"User_id\"\n", string(body))
 	})

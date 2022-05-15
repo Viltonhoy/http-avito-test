@@ -24,6 +24,8 @@ type returnReader struct {
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	var hand *jsReaderInf
 
+	r.Context()
+
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	err := json.Unmarshal(body, &hand)
@@ -38,7 +40,7 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Store.ReadClient(hand.User_id)
+	user, err := h.Store.ReadClient(hand.User_id, r.Context())
 	if err != nil {
 		log.Fatal("Error reading client", err.Error())
 	}

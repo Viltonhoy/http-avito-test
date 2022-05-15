@@ -52,11 +52,10 @@ func (s *Storage) Close() {
 	s.db.Close()
 }
 
-func (s *Storage) ReadClient(user_id int64) (u User, err error) {
+func (s *Storage) ReadClient(user_id int64, ctx context.Context) (u User, err error) {
 	logger := s.logger
 	logger.Sugar().Debug(`reading the balance of %d user`, user_id)
 
-	ctx := context.Background()
 	tsql := `SELECT SUM(amount) FROM posting WHERE account_id = $1;`
 
 	//выполнить запрос
@@ -74,19 +73,19 @@ func (s *Storage) ReadClient(user_id int64) (u User, err error) {
 	}, nil
 }
 
-func (s *Storage) DepositOrWithdrawal(user_id int64, amount decimal.Decimal, tp string) (err error) {
+func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Context) (err error) {
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
+	var tp = "deposit"
 	var t = time.Now()
 
-	ctx := context.Background()
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee)
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
 			VALUES ($1, $4, $5, $2, $3, '');`
 
 	_, err = tx.Exec(
@@ -104,7 +103,7 @@ func (s *Storage) DepositOrWithdrawal(user_id int64, amount decimal.Decimal, tp 
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee)
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
 			VALUES (0, $3, 2022, -1 * $1, $2, '');`
 
 	_, err = tx.Exec(
@@ -123,19 +122,116 @@ func (s *Storage) DepositOrWithdrawal(user_id int64, amount decimal.Decimal, tp 
 	return err
 }
 
-func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal) error {
+func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.Context) (err error) {
 	logger := s.logger
-	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
+	var tp = "withdrawal"
 	var t = time.Now()
 
-	ctx := context.Background()
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee) VALUES ($1, 'Transfer', $4, $2, $3, $5);`
+	check_sql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, check_sql)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		return err
+	}
+
+	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
+
+	var balance Balance
+	err = tx.QueryRow(ctx, select_sql, user_id).Scan(&balance.ID, &balance.Sum)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed ")
+	}
+
+	if amount.GreaterThan(balance.Sum) {
+		tx.Rollback(ctx)
+		logger.Error("insufficient funds on the user's account")
+		return err
+	}
+
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+			VALUES ($1, $4, $5, -1 * $2, $3, '');`
+
+	_, err = tx.Exec(
+		ctx,
+		ftsql,
+		user_id,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		tp,
+		t.Format("2006"),
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to insert record: %v", err)
+		return err
+	}
+
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+			VALUES (0, $3, 2022, $1, $2, '');`
+
+	_, err = tx.Exec(
+		ctx,
+		stsql,
+		amount,
+		t.Format("2006-01-02 15:04:05"),
+		tp,
+	)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to insert record: %v", err)
+		return err
+	}
+	err = tx.Commit(ctx)
+	return err
+}
+
+func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx context.Context) error {
+	logger := s.logger
+	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+
+	var tp = "transfer"
+	var t = time.Now()
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	check_sql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, check_sql)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		return err
+	}
+
+	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
+
+	var balance Balance
+	err = tx.QueryRow(ctx, select_sql, user_id1).Scan(&balance.ID, &balance.Sum)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed ")
+	}
+
+	if amount.GreaterThan(balance.Sum) {
+		tx.Rollback(ctx)
+		logger.Error("insufficient funds on the user's account")
+		return err
+	}
+
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) VALUES ($1, $6, $4, -1 * $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -145,13 +241,14 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal) err
 		t.Format("2006-01-02 15:04:05"),
 		t.Format("2006"),
 		fmt.Sprintf(`account_id: %d`, user_id2),
+		tp,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, journal, account_period, amount, date, addressee) VALUES ($1, 'transfer', $4, -1 * $2, $3, $5);`
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) VALUES ($1, $6, $4, $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -161,6 +258,7 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal) err
 		t.Format("2006-01-02 15:04:05"),
 		t.Format("2006"),
 		fmt.Sprintf(`account_id: %d`, user_id1),
+		tp,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -171,12 +269,11 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal) err
 	return err
 }
 
-func (s *Storage) ReadUserHistoryList(user_id int64, sort string) (l []Transf, err error) {
+func (s *Storage) ReadUserHistoryList(user_id int64, sort string, ctx context.Context) (l []Transf, err error) {
 	logger := s.logger
 	logger.Debug("reading a history list")
 
-	ctx := context.Background()
-	tsql := "SELECT account_id, journal, amount, date, addressee FROM posting WHERE account_id = $1 ORDER BY $2;"
+	tsql := "SELECT account_id, cb_journal, amount, date, addressee FROM posting WHERE account_id = $1 ORDER BY $2;"
 
 	rows, err := s.db.Query(ctx, tsql, user_id, sort)
 	if err != nil {
