@@ -12,7 +12,7 @@ type ExchangeResult struct {
 	Result float32
 }
 
-func ExchangeRates(value string, currency string) *ExchangeResult {
+func (e *ExchangeResult) ExchangeRates(value string, currency string) (float32, error) {
 	var exch *ExchangeResult
 	var conf = storage.NewExch()
 
@@ -32,7 +32,7 @@ func ExchangeRates(value string, currency string) *ExchangeResult {
 	body, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(body, &exch)
 	if err != nil {
-		return nil
+		return 0, err
 	}
-	return exch
+	return exch.Result, nil
 }

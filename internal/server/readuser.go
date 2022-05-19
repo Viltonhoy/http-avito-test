@@ -23,6 +23,7 @@ type returnReader struct {
 
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	var hand *jsReaderInf
+	var exch *exchanger.ExchangeResult
 
 	r.Context()
 
@@ -52,8 +53,8 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	if hand.Currency == "RUR" || hand.Currency == "RUB" || hand.Currency == "" {
 		newval = nextval
 	} else {
-		newBalance := exchanger.ExchangeRates(nextval, hand.Currency)
-		newval = decimal.NewFromFloat32(newBalance.Result).String()
+		exchval, _ := exch.ExchangeRates(nextval, hand.Currency)
+		newval = decimal.NewFromFloat32(exchval).String()
 	}
 
 	readUser := returnReader{
