@@ -8,7 +8,7 @@ CREATE TABLE posting(
 	accounting_period text NOT NULL,
 	amount bigint NOT NULL,
 	date date NOT NULL,
-	addressee text 
+	addressee bigint 
 );
 GO
 

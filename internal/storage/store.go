@@ -19,6 +19,8 @@ type Storage struct {
 	db     *pgxpool.Pool
 }
 
+const CacheBookAccountID = int64(0)
+
 func NewStore(logger *zap.Logger) (*Storage, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
@@ -65,10 +67,10 @@ func (s *Storage) ReadClient(user_id int64, ctx context.Context) (u User, err er
 		return User{}, err
 	}
 
-	u.ID = user_id
+	u.AccountID = user_id
 
 	return User{
-		u.ID,
+		u.AccountID,
 		u.Balance,
 	}, nil
 }
@@ -77,7 +79,6 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
-	var tp = "deposit"
 	var t = time.Now()
 
 	tx, err := s.db.Begin(ctx)
@@ -85,8 +86,8 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
-			VALUES ($1, $4, $5, $2, $3, '');`
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+			VALUES ($1, $4, $5, $2, $3);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -94,8 +95,8 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 		user_id,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		tp,
-		t.Format("2006"),
+		operationTypeDeposit,
+		t.Year(),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -104,14 +105,16 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 	}
 
 	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
-			VALUES (0, $3, 2022, -1 * $1, $2, '');`
+			VALUES ($5, $3, $4, -1 * $1, $2, '');`
 
 	_, err = tx.Exec(
 		ctx,
 		stsql,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		tp,
+		operationTypeDeposit,
+		t.Year(),
+		CacheBookAccountID,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -126,7 +129,6 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
-	var tp = "withdrawal"
 	var t = time.Now()
 
 	tx, err := s.db.Begin(ctx)
@@ -145,21 +147,21 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 
 	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
 
-	var balance Balance
-	err = tx.QueryRow(ctx, select_sql, user_id).Scan(&balance.ID, &balance.Sum)
+	var balance UserBalance
+	err = tx.QueryRow(ctx, select_sql, user_id).Scan(&balance.AccountID, &balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed ")
 	}
 
-	if amount.GreaterThan(balance.Sum) {
+	if amount.GreaterThan(balance.Balance) {
 		tx.Rollback(ctx)
 		logger.Error("insufficient funds on the user's account")
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
-			VALUES ($1, $4, $5, -1 * $2, $3, '');`
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+			VALUES ($1, $4, $5, -1 * $2, $3);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -167,8 +169,8 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		user_id,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		tp,
-		t.Format("2006"),
+		operationTypeWithdrawal,
+		t.Year(),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -176,15 +178,17 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
-			VALUES (0, $3, 2022, $1, $2, '');`
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+			VALUES ($5, $3, $4, $1, $2);`
 
 	_, err = tx.Exec(
 		ctx,
 		stsql,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		tp,
+		operationTypeWithdrawal,
+		t.Year(),
+		CacheBookAccountID,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -199,7 +203,6 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 	logger := s.logger
 	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
 
-	var tp = "transfer"
 	var t = time.Now()
 
 	tx, err := s.db.Begin(ctx)
@@ -218,20 +221,21 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 
 	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
 
-	var balance Balance
-	err = tx.QueryRow(ctx, select_sql, user_id1).Scan(&balance.ID, &balance.Sum)
+	var balance UserBalance
+	err = tx.QueryRow(ctx, select_sql, user_id1).Scan(&balance.AccountID, &balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed ")
 	}
 
-	if amount.GreaterThan(balance.Sum) {
+	if amount.GreaterThan(balance.Balance) {
 		tx.Rollback(ctx)
 		logger.Error("insufficient funds on the user's account")
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) VALUES ($1, $6, $4, -1 * $2, $3, $5);`
+	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+			VALUES ($1, $6, $4, -1 * $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -239,9 +243,9 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		user_id1,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		t.Format("2006"),
+		t.Year(),
 		fmt.Sprintf(`account_id: %d`, user_id2),
-		tp,
+		operationTypeTransfer,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -256,9 +260,9 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		user_id2,
 		amount,
 		t.Format("2006-01-02 15:04:05"),
-		t.Format("2006"),
+		t.Year(),
 		fmt.Sprintf(`account_id: %d`, user_id1),
-		tp,
+		operationTypeTransfer,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -284,7 +288,7 @@ func (s *Storage) ReadUserHistoryList(user_id int64, sort string, ctx context.Co
 	var list []Transf
 	for rows.Next() {
 		var l Transf
-		err := rows.Scan(&l.ID, &l.Type, &l.Sum, &l.Date, &l.Addressee)
+		err := rows.Scan(&l.AcountID, &l.CBjournal, &l.Amount, &l.Date, &l.Addressee)
 		if err != nil {
 			s.logger.Error("scanning row", zap.Error(err))
 		}

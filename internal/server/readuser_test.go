@@ -25,8 +25,8 @@ func TestReadUser(t *testing.T) {
 		m := NewMockStorager(ctrl)
 
 		m.EXPECT().ReadClient(int64(1), context.Background()).Return(storage.User{
-			ID:      1,
-			Balance: decimal.NewFromInt(10000),
+			AccountID: 1,
+			Balance:   decimal.NewFromInt(10000),
 		}, nil)
 
 		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":""}`))

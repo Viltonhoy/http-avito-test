@@ -58,7 +58,7 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	readUser := returnReader{
-		ID:      user.ID,
+		ID:      user.AccountID,
 		Balance: newval,
 	}
 
