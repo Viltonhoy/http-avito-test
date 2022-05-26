@@ -2,57 +2,77 @@ package generatetable
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"http-avito-test/internal/storage"
+	"http-avito-test/internal/zapadapter"
+	"time"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"go.uber.org/zap"
 )
 
-type rowSrcPosting struct {
-	rows []Posting
-	idx  int
-	err  error
+type Storage struct {
+	logger *zap.Logger
+	db     *pgxpool.Pool
 }
 
-func AddGenerateTable() int64 {
-
-	rowSrcData := rowSrcPosting{
-		rows: GenerateTableData(5, 100),
-		idx:  -1,
-		err:  nil,
+func NewStore(logger *zap.Logger) (*Storage, error) {
+	if logger == nil {
+		return nil, errors.New("no logger provided")
 	}
 
-	columnName := []string{"account_id", "cb_journal", "accounting_period", "amount", "date", "addressee"}
+	conf := storage.NewServ()
+	var connString = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", conf.User, conf.Password, conf.Database)
+	config, _ := pgxpool.ParseConfig(connString)
 
-	var tx pgx.Tx
+	config.ConnConfig.Logger = zapadapter.NewLogger(logger)
+	config.ConnConfig.LogLevel = pgx.LogLevelError
 
-	r, err := tx.CopyFrom(context.Background(), pgx.Identifier{"posting"}, columnName, &rowSrcData)
+	ctx := context.Background()
+	pool, _ := pgxpool.ConnectConfig(ctx, config)
+
+	err := pool.Ping(ctx)
 	if err != nil {
-		return 0
+		logger.Sugar().Fatalf("connection is lost", err)
 	}
-	return r
-}
 
-func (b *rowSrcPosting) Next() bool {
-	b.idx++
-	return b.idx < len(b.rows)
-}
-
-func (p Posting) interfaceSlice() ([]interface{}, error) {
-	return []interface{}{
-		p.accountID,
-		p.CBjournal,
-		p.accountingPeriod,
-		p.amount,
-		p.date,
-		p.addressee,
+	return &Storage{
+		logger: logger,
+		db:     pool,
 	}, nil
 }
 
-func (b *rowSrcPosting) Values() ([]interface{}, error) {
-	data, err := b.rows[b.idx].interfaceSlice()
-	b.err = err
-	return data, err
-}
+func AddGeneratedTable(s *Storage, userCount, totalRecordCount int) {
+	logger := s.logger
+	logger.Sugar().Debug(`add %d new rows for %d users to database`, totalRecordCount, userCount)
 
-func (b *rowSrcPosting) Err() error {
-	return b.err
+	columnName := []string{"account_id", "cb_journal", "accounting_period", "amount", "date", "addressee"}
+
+	var rows = GenerateTableData(userCount, totalRecordCount)
+	newSlice := make([][]interface{}, 0, len(rows))
+
+	for _, row := range rows {
+		newSlice = append(
+			newSlice,
+			[]interface{}{
+				row.AccountID,
+				row.CBjournal,
+				row.AccountingPeriod,
+				row.Amount,
+				row.Date,
+				row.Addressee,
+			},
+		)
+	}
+	start := time.Now()
+	num, err := s.db.CopyFrom(context.Background(), pgx.Identifier{"posting"}, columnName, pgx.CopyFromRows(newSlice))
+	if err != nil {
+		logger.Error("")
+		return
+	}
+	duration := time.Since(start)
+	s.db.Close()
+	fmt.Printf(`The number of copied rows: %d;  request execution time: %fsec`, num, duration.Seconds())
 }

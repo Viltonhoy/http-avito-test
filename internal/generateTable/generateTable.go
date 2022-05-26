@@ -7,12 +7,12 @@ import (
 )
 
 type Posting struct {
-	accountID        int64
+	AccountID        int64
 	CBjournal        operationType
-	accountingPeriod int
-	amount           int64
-	date             time.Time
-	addressee        *int64
+	AccountingPeriod string
+	Amount           int64
+	Date             time.Time
+	Addressee        *int64
 }
 
 type operationType string
@@ -30,24 +30,24 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	userTotalBalances := make(map[int64]int64, userCount)
 
 	for i := 1; i <= userCount; i++ {
-		year := time.Now().Year()
+		year := fmt.Sprintf(`Period: %d`, time.Now().Year())
 		amountValue := rand.Int63n(10000000) * 100
 
 		postingTable = append(
 			postingTable,
 			Posting{
-				accountID:        int64(i),
+				AccountID:        int64(i),
 				CBjournal:        operationTypeDeposit,
-				accountingPeriod: year,
-				amount:           amountValue,
-				date:             time.Now(),
+				AccountingPeriod: year,
+				Amount:           amountValue,
+				Date:             time.Now(),
 			},
 			Posting{
-				accountID:        cacheBookAccountID,
+				AccountID:        cacheBookAccountID,
 				CBjournal:        operationTypeDeposit,
-				accountingPeriod: year,
-				amount:           -1 * amountValue,
-				date:             time.Now(),
+				AccountingPeriod: year,
+				Amount:           -1 * amountValue,
+				Date:             time.Now(),
 			},
 		)
 
@@ -61,7 +61,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	for i <= n {
 
 		i++
-		year := time.Now().Year()
+		year := fmt.Sprintf(`Period: %d`, time.Now().Year())
 
 		switch casheBookOperation[rand.Intn(len(casheBookOperation))] {
 		case string(operationTypeDeposit):
@@ -71,18 +71,18 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 			postingTable = append(
 				postingTable,
 				Posting{
-					accountID:        int64(accountID),
+					AccountID:        int64(accountID),
 					CBjournal:        operationTypeDeposit,
-					accountingPeriod: year,
-					amount:           amount,
-					date:             time.Now(),
+					AccountingPeriod: year,
+					Amount:           amount,
+					Date:             time.Now(),
 				},
 				Posting{
-					accountID:        cacheBookAccountID,
+					AccountID:        cacheBookAccountID,
 					CBjournal:        operationTypeDeposit,
-					accountingPeriod: year,
-					amount:           -1 * amount,
-					date:             time.Now(),
+					AccountingPeriod: year,
+					Amount:           -1 * amount,
+					Date:             time.Now(),
 				},
 			)
 
@@ -98,18 +98,18 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 			postingTable = append(
 				postingTable,
 				Posting{
-					accountID:        int64(accountID),
+					AccountID:        int64(accountID),
 					CBjournal:        operationTypeWithdrawal,
-					accountingPeriod: year,
-					amount:           amount * -1,
-					date:             time.Now(),
+					AccountingPeriod: year,
+					Amount:           amount * -1,
+					Date:             time.Now(),
 				},
 				Posting{
-					accountID:        cacheBookAccountID,
+					AccountID:        cacheBookAccountID,
 					CBjournal:        operationTypeWithdrawal,
-					accountingPeriod: year,
-					amount:           amount,
-					date:             time.Now(),
+					AccountingPeriod: year,
+					Amount:           amount,
+					Date:             time.Now(),
 				},
 			)
 
@@ -141,27 +141,25 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 			postingTable = append(
 				postingTable,
 				Posting{
-					accountID:        senderID,
+					AccountID:        senderID,
 					CBjournal:        operationTypeTransfer,
-					accountingPeriod: year,
-					amount:           amount * -1,
-					date:             time.Now(),
-					addressee:        &recipientID,
+					AccountingPeriod: year,
+					Amount:           amount * -1,
+					Date:             time.Now(),
+					Addressee:        &recipientID,
 				},
 				Posting{
-					accountID:        recipientID,
+					AccountID:        recipientID,
 					CBjournal:        operationTypeTransfer,
-					accountingPeriod: year,
-					amount:           amount,
-					date:             time.Now(),
-					addressee:        &senderID,
+					AccountingPeriod: year,
+					Amount:           amount,
+					Date:             time.Now(),
+					Addressee:        &senderID,
 				},
 			)
 			userTotalBalances[recipientID] += amount
 
 			userTotalBalances[senderID] = oldAmount - amount
-		default:
-			fmt.Println("WTF")
 		}
 	}
 	return postingTable

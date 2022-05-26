@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"http-avito-test/internal/server"
 	"http-avito-test/internal/storage"
 	"log"
@@ -21,7 +22,9 @@ func main() {
 	}
 	defer logger.Sync()
 
-	var s, _ = storage.NewStore(logger)
+	ctx := context.Background()
+
+	var s, _ = storage.NewStore(ctx, logger)
 	h := server.Handler{
 		Store: s,
 	}

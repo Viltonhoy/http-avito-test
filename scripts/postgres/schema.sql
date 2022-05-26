@@ -13,8 +13,7 @@ CREATE TABLE posting(
 GO
 
 create materialized view account_balances(
-user_id,
-balance	
+user_id, balance	
 ) as select
 	account_id,
 	sum(amount) 
@@ -22,3 +21,11 @@ from posting
 group by account_id
 with no data;
 GO
+
+create materialized view history_table(
+account_id, cb_journal, amount, date, addressee
+) as select
+	account_id, cb_journal, amount, date, addressee 
+from posting 
+with no data;
+Go

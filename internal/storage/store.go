@@ -21,7 +21,7 @@ type Storage struct {
 
 const CacheBookAccountID = int64(0)
 
-func NewStore(logger *zap.Logger) (*Storage, error) {
+func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
 	}
@@ -34,11 +34,13 @@ func NewStore(logger *zap.Logger) (*Storage, error) {
 	config.ConnConfig.Logger = zapadapter.NewLogger(logger)
 	config.ConnConfig.LogLevel = pgx.LogLevelError
 
-	ctx := context.Background()
 	// 	//создать пул соединений
-	pool, _ := pgxpool.ConnectConfig(ctx, config)
+	pool, err := pgxpool.ConnectConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect using config %+v: %w", config, err)
+	}
 
-	err := pool.Ping(ctx)
+	err = pool.Ping(ctx)
 	if err != nil {
 		logger.Sugar().Fatalf("connection is lost", err)
 	}
@@ -77,9 +79,9 @@ func (s *Storage) ReadClient(user_id int64, ctx context.Context) (u User, err er
 
 func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Context) (err error) {
 	logger := s.logger
-	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
+	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %s`, user_id, amount)
 
-	var t = time.Now()
+	var date = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -94,9 +96,9 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 		ftsql,
 		user_id,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
+		date.Format("2006-01-02 15:04:05"),
 		operationTypeDeposit,
-		t.Year(),
+		fmt.Sprintf(`Period: %d`, date.Year()),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -104,16 +106,16 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee)
-			VALUES ($5, $3, $4, -1 * $1, $2, '');`
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+			VALUES ($5, $3, $4, -1 * $1, $2);`
 
 	_, err = tx.Exec(
 		ctx,
 		stsql,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
+		date.Format("2006-01-02 15:04:05"),
 		operationTypeDeposit,
-		t.Year(),
+		fmt.Sprintf(`Period: %d`, date.Year()),
 		CacheBookAccountID,
 	)
 	if err != nil {
@@ -129,7 +131,7 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
-	var t = time.Now()
+	var date = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -168,9 +170,9 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		ftsql,
 		user_id,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
+		date.Format("2006-01-02 15:04:05"),
 		operationTypeWithdrawal,
-		t.Year(),
+		fmt.Sprintf(`Period: %d`, date.Year()),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -185,9 +187,9 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		ctx,
 		stsql,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
+		date.Format("2006-01-02 15:04:05"),
 		operationTypeWithdrawal,
-		t.Year(),
+		fmt.Sprintf(`Period: %d`, date.Year()),
 		CacheBookAccountID,
 	)
 	if err != nil {
@@ -203,7 +205,7 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 	logger := s.logger
 	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
 
-	var t = time.Now()
+	var date = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -242,9 +244,9 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		ftsql,
 		user_id1,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
-		t.Year(),
-		fmt.Sprintf(`account_id: %d`, user_id2),
+		date.Format("2006-01-02 15:04:05"),
+		fmt.Sprintf(`Period: %d`, date.Year()),
+		user_id2,
 		operationTypeTransfer,
 	)
 	if err != nil {
@@ -252,16 +254,17 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) VALUES ($1, $6, $4, $2, $3, $5);`
+	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+			VALUES ($1, $6, $4, $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
 		stsql,
 		user_id2,
 		amount,
-		t.Format("2006-01-02 15:04:05"),
-		t.Year(),
-		fmt.Sprintf(`account_id: %d`, user_id1),
+		date.Format("2006-01-02 15:04:05"),
+		fmt.Sprintf(`Period: %d`, date.Year()),
+		user_id1,
 		operationTypeTransfer,
 	)
 	if err != nil {
