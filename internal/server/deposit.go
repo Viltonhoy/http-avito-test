@@ -10,8 +10,8 @@ import (
 )
 
 type jsDeposInf struct {
-	User_id int64
-	Amount  float32
+	UserID int64
+	Amount float32
 }
 
 func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +26,12 @@ func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
 
 	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	err = h.Store.Deposit(hand.User_id, newBalance, r.Context())
+	if newBalance.Exponent() < -2 {
+		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Store.Deposit(r.Context(), hand.UserID, newBalance)
 	if err != nil {
 		log.Fatal("Error updating client", err.Error())
 		return

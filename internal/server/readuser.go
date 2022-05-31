@@ -12,13 +12,13 @@ import (
 )
 
 type jsReaderInf struct {
-	User_id  int64
-	Currency string
+	AccountID int64
+	Currency  string
 }
 
 type returnReader struct {
-	ID      int64
-	Balance string
+	AccountID int64
+	Balance   decimal.Decimal
 }
 
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
@@ -36,30 +36,30 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.User_id <= 0 {
+	if hand.AccountID <= 0 {
 		http.Error(w, "Missing Field \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.Store.ReadClient(hand.User_id, r.Context())
+	user, err := h.Store.ReadUser(r.Context(), hand.AccountID)
 	if err != nil {
 		log.Fatal("Error reading client", err.Error())
 	}
 
-	var newval string
-	val := user.Balance.String()
-	nextval := val[:len(val)-2] + "." + val[len(val)-2:]
+	var newval decimal.Decimal
+
+	nextval := decimal.New(user.Balance.IntPart(), int32(-2))
 
 	if hand.Currency == "RUR" || hand.Currency == "RUB" || hand.Currency == "" {
 		newval = nextval
 	} else {
 		exchval, _ := exch.ExchangeRates(nextval, hand.Currency)
-		newval = decimal.NewFromFloat32(exchval).String()
+		newval = exchval
 	}
 
 	readUser := returnReader{
-		ID:      user.AccountID,
-		Balance: newval,
+		AccountID: user.AccountID,
+		Balance:   newval,
 	}
 
 	js, err := json.Marshal(readUser)

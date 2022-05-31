@@ -12,32 +12,33 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReadUserHostory(t *testing.T) {
 	t.Run("green case", func(t *testing.T) {
-		var testHistoryList = []storage.Transf{
+		var testHistoryList = []storage.Transfer{
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    100,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(100),
 				Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    120,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(120),
 				Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    130,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(130),
 				Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 		}
 
@@ -45,27 +46,27 @@ func TestReadUserHostory(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(int64(1), "amount", context.Background()).Return([]storage.Transf{
+		m.EXPECT().ReadUserHistoryList(context.Background(), 1, "amount", 100, 0).Return([]storage.Transfer{
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    100,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(100),
 				Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    120,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(120),
 				Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 			{
 				AcountID:  1,
-				CBjournal: "Deposit",
-				Amount:    130,
+				CBjournal: "deposit",
+				Amount:    decimal.NewFromInt(130),
 				Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
-				Addressee: "",
+				Addressee: nil,
 			},
 		}, nil)
 

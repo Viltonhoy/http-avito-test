@@ -6,13 +6,15 @@ import (
 	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/shopspring/decimal"
 )
 
 type ExchangeResult struct {
 	Result float32
 }
 
-func (e *ExchangeResult) ExchangeRates(value string, currency string) (float32, error) {
+func (e *ExchangeResult) ExchangeRates(value decimal.Decimal, currency string) (decimal.Decimal, error) {
 	var exch *ExchangeResult
 	var conf = storage.NewExch()
 
@@ -32,7 +34,7 @@ func (e *ExchangeResult) ExchangeRates(value string, currency string) (float32, 
 	body, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(body, &exch)
 	if err != nil {
-		return 0, err
+		return decimal.NewFromInt(0), err
 	}
-	return exch.Result, nil
+	return decimal.NewFromFloat32(exch.Result), nil
 }

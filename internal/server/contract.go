@@ -8,9 +8,9 @@ import (
 )
 
 type Storager interface {
-	ReadClient(int64, context.Context) (storage.User, error)
-	Deposit(int64, decimal.Decimal, context.Context) error
-	Withdrawal(int64, decimal.Decimal, context.Context) error
-	Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx context.Context) error
-	ReadUserHistoryList(user_id int64, sort string, ctx context.Context) (l []storage.Transf, err error)
+	ReadUser(context.Context, int64) (storage.UserBalance, error)
+	Deposit(context.Context, int64, decimal.Decimal) error
+	Withdrawal(context.Context, int64, decimal.Decimal) error
+	Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal) error
+	ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) (l []storage.Transfer, err error)
 }

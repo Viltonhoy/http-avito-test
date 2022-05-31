@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-type ServerConfig struct {
+type DbServerConfig struct {
 	Server   string
 	Port     int
 	User     string
@@ -17,8 +17,8 @@ type ExchangeGener struct {
 	Key string
 }
 
-func NewServ() *ServerConfig {
-	return &ServerConfig{
+func NewDbSreverConfig() *DbServerConfig {
+	return &DbServerConfig{
 		Server:   getEnv("SERVER", ""),
 		Port:     getEnvAsInt("SERVER_PORT", 1),
 		User:     getEnv("SERVER_USER", ""),

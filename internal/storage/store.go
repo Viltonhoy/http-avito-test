@@ -19,14 +19,14 @@ type Storage struct {
 	db     *pgxpool.Pool
 }
 
-const CacheBookAccountID = int64(0)
+const cacheBookAccountID = int64(0)
 
 func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
 	}
 
-	conf := NewServ()
+	conf := NewDbSreverConfig()
 	//строка подключения
 	var connString = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", conf.User, conf.Password, conf.Database)
 	config, _ := pgxpool.ParseConfig(connString)
@@ -48,7 +48,7 @@ func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	return &Storage{
 		logger: logger,
 		db:     pool,
-	}, nil
+	}, err
 }
 
 func (s *Storage) Close() {
@@ -56,49 +56,65 @@ func (s *Storage) Close() {
 	s.db.Close()
 }
 
-func (s *Storage) ReadClient(user_id int64, ctx context.Context) (u User, err error) {
+func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, err error) {
 	logger := s.logger
 	logger.Sugar().Debug(`reading the balance of %d user`, user_id)
 
-	tsql := `SELECT SUM(amount) FROM posting WHERE account_id = $1;`
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return UserBalance{}, err
+	}
+
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, refreshSql)
+	if err != nil {
+		tx.Rollback(ctx)
+		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		return UserBalance{}, err
+	}
+
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
 
 	//выполнить запрос
-	err = s.db.QueryRow(ctx, tsql, user_id).Scan(&u.Balance)
+	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&u.Balance)
 	if err != nil {
+		tx.Rollback(ctx)
 		logger.Sugar().Error("cannot return user with specified ID: %d", user_id)
-		return User{}, err
+		return UserBalance{}, err
 	}
 
 	u.AccountID = user_id
 
-	return User{
+	err = tx.Commit(ctx)
+	return UserBalance{
 		u.AccountID,
 		u.Balance,
-	}, nil
+	}, err
 }
 
-func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Context) (err error) {
+func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %s`, user_id, amount)
 
-	var date = time.Now()
+	var now = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
 			VALUES ($1, $4, $5, $2, $3);`
 
 	_, err = tx.Exec(
 		ctx,
-		ftsql,
+		firstInsertSql,
 		user_id,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
+		now.Format("2006-01-02 15:04:05"),
 		operationTypeDeposit,
-		fmt.Sprintf(`Period: %d`, date.Year()),
+		fmt.Sprintf(`Period: %d`, now.Year()),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -106,17 +122,17 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+	secondInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
 			VALUES ($5, $3, $4, -1 * $1, $2);`
 
 	_, err = tx.Exec(
 		ctx,
-		stsql,
+		secondInsertSql,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
+		now.Format("2006-01-02 15:04:05"),
 		operationTypeDeposit,
-		fmt.Sprintf(`Period: %d`, date.Year()),
-		CacheBookAccountID,
+		fmt.Sprintf(`Period: %d`, now.Year()),
+		cacheBookAccountID,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -127,30 +143,30 @@ func (s *Storage) Deposit(user_id int64, amount decimal.Decimal, ctx context.Con
 	return err
 }
 
-func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.Context) (err error) {
+func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
 	logger := s.logger
 	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
 
-	var date = time.Now()
+	var now = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	check_sql := `REFRESH MATERIALIZED VIEW account_balances;`
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
 
-	_, err = tx.Exec(ctx, check_sql)
+	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
 		return err
 	}
 
-	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
 
 	var balance UserBalance
-	err = tx.QueryRow(ctx, select_sql, user_id).Scan(&balance.AccountID, &balance.Balance)
+	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed ")
@@ -162,17 +178,17 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
 			VALUES ($1, $4, $5, -1 * $2, $3);`
 
 	_, err = tx.Exec(
 		ctx,
-		ftsql,
+		firstInsertSql,
 		user_id,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
+		now.Format("2006-01-02 15:04:05"),
 		operationTypeWithdrawal,
-		fmt.Sprintf(`Period: %d`, date.Year()),
+		fmt.Sprintf(`Period: %d`, now.Year()),
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -180,17 +196,17 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
+	secondInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
 			VALUES ($5, $3, $4, $1, $2);`
 
 	_, err = tx.Exec(
 		ctx,
-		stsql,
+		secondInsertSql,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
+		now.Format("2006-01-02 15:04:05"),
 		operationTypeWithdrawal,
-		fmt.Sprintf(`Period: %d`, date.Year()),
-		CacheBookAccountID,
+		fmt.Sprintf(`Period: %d`, now.Year()),
+		cacheBookAccountID,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -201,30 +217,30 @@ func (s *Storage) Withdrawal(user_id int64, amount decimal.Decimal, ctx context.
 	return err
 }
 
-func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx context.Context) error {
+func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal) error {
 	logger := s.logger
 	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
 
-	var date = time.Now()
+	var now = time.Now()
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	check_sql := `REFRESH MATERIALIZED VIEW account_balances;`
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
 
-	_, err = tx.Exec(ctx, check_sql)
+	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
 		return err
 	}
 
-	select_sql := `SELECT * FROM account_balances WHERE user_id = $1;`
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
 
 	var balance UserBalance
-	err = tx.QueryRow(ctx, select_sql, user_id1).Scan(&balance.AccountID, &balance.Balance)
+	err = tx.QueryRow(ctx, selectSql, user_id1).Scan(&balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
 		logger.Sugar().Error("failed ")
@@ -236,16 +252,16 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		return err
 	}
 
-	ftsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
 			VALUES ($1, $6, $4, -1 * $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
-		ftsql,
+		firstInsertSql,
 		user_id1,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
-		fmt.Sprintf(`Period: %d`, date.Year()),
+		now.Format("2006-01-02 15:04:05"),
+		fmt.Sprintf(`Period: %d`, now.Year()),
 		user_id2,
 		operationTypeTransfer,
 	)
@@ -254,16 +270,16 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 		return err
 	}
 
-	stsql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+	secondInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
 			VALUES ($1, $6, $4, $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
-		stsql,
+		secondInsertSql,
 		user_id2,
 		amount,
-		date.Format("2006-01-02 15:04:05"),
-		fmt.Sprintf(`Period: %d`, date.Year()),
+		now.Format("2006-01-02 15:04:05"),
+		fmt.Sprintf(`Period: %d`, now.Year()),
 		user_id1,
 		operationTypeTransfer,
 	)
@@ -276,25 +292,46 @@ func (s *Storage) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx
 	return err
 }
 
-func (s *Storage) ReadUserHistoryList(user_id int64, sort string, ctx context.Context) (l []Transf, err error) {
+func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) (l []Transfer, err error) {
 	logger := s.logger
 	logger.Debug("reading a history list")
 
-	tsql := "SELECT account_id, cb_journal, amount, date, addressee FROM posting WHERE account_id = $1 ORDER BY $2;"
+	var sql string
 
-	rows, err := s.db.Query(ctx, tsql, user_id, sort)
-	if err != nil {
-		logger.Sugar().Errorf("cannot return user list with specified ID: %d", user_id)
-		return TransfList{}, err
+	amountSql := `SELECT account_id, cb_journal, amount, date, addressee FROM posting 
+		WHERE account_id = $1 ORDER BY amount LIMIT $2 OFFSET $3;`
+
+	dateSql := `SELECT account_id, cb_journal, amount, date, addressee FROM posting 
+	WHERE account_id = $1 ORDER BY date LIMIT $2 OFFSET $3;`
+
+	switch order {
+	case "amount":
+		sql = amountSql
+	case "date":
+		sql = dateSql
 	}
 
-	var list []Transf
+	rows, err := s.db.Query(
+		ctx,
+		sql,
+		user_id,
+		limit,
+		offset,
+	)
+
+	if err != nil {
+		logger.Sugar().Errorf("cannot return user list with specified ID: %d", user_id)
+		return []Transfer{}, err
+	}
+
+	var list []Transfer
 	for rows.Next() {
-		var l Transf
+		var l Transfer
 		err := rows.Scan(&l.AcountID, &l.CBjournal, &l.Amount, &l.Date, &l.Addressee)
 		if err != nil {
 			s.logger.Error("scanning row", zap.Error(err))
 		}
+		l.Amount = decimal.New(l.Amount.IntPart(), -2)
 		list = append(list, l)
 	}
 	return list, nil

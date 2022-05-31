@@ -6,30 +6,23 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type User struct {
+type UserBalance struct {
 	AccountID int64           `json:"ID"`
 	Balance   decimal.Decimal `json:"Balance"`
 }
 
-type Transf struct {
-	AcountID  int64     `json:"ID"`
-	CBjournal string    `json:"Type"`
-	Amount    int64     `json:"Sum"`
-	Date      time.Time `json:"Date"`
-	Addressee string    `json:"Addressee"`
+type Transfer struct {
+	AcountID  int64           `json:"ID"`
+	CBjournal string          `json:"Type"`
+	Amount    decimal.Decimal `json:"Sum"`
+	Date      time.Time       `json:"Date"`
+	Addressee *int64          `json:"Addressee"`
 }
 
-type OperationType string
+type operationType string
 
 const (
-	operationTypeDeposit    OperationType = "deposit"
-	operationTypeWithdrawal OperationType = "withdrawal"
-	operationTypeTransfer   OperationType = "transfer"
+	operationTypeDeposit    operationType = "deposit"
+	operationTypeWithdrawal operationType = "withdrawal"
+	operationTypeTransfer   operationType = "transfer"
 )
-
-type TransfList []Transf
-
-type UserBalance struct {
-	AccountID int64
-	Balance   decimal.Decimal
-}

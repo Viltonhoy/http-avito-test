@@ -37,7 +37,7 @@ func (m *MockStorager) EXPECT() *MockStoragerMockRecorder {
 }
 
 // Deposit mocks base method.
-func (m *MockStorager) Deposit(arg0 int64, arg1 decimal.Decimal, arg2 context.Context) error {
+func (m *MockStorager) Deposit(arg0 context.Context, arg1 int64, arg2 decimal.Decimal) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deposit", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -50,52 +50,52 @@ func (mr *MockStoragerMockRecorder) Deposit(arg0, arg1, arg2 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deposit", reflect.TypeOf((*MockStorager)(nil).Deposit), arg0, arg1, arg2)
 }
 
-// ReadClient mocks base method.
-func (m *MockStorager) ReadClient(arg0 int64, arg1 context.Context) (storage.User, error) {
+// ReadUser mocks base method.
+func (m *MockStorager) ReadUser(arg0 context.Context, arg1 int64) (storage.UserBalance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadClient", arg0, arg1)
-	ret0, _ := ret[0].(storage.User)
+	ret := m.ctrl.Call(m, "ReadUser", arg0, arg1)
+	ret0, _ := ret[0].(storage.UserBalance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ReadClient indicates an expected call of ReadClient.
-func (mr *MockStoragerMockRecorder) ReadClient(arg0, arg1 interface{}) *gomock.Call {
+// ReadUser indicates an expected call of ReadUser.
+func (mr *MockStoragerMockRecorder) ReadUser(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadClient", reflect.TypeOf((*MockStorager)(nil).ReadClient), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUser", reflect.TypeOf((*MockStorager)(nil).ReadUser), arg0, arg1)
 }
 
 // ReadUserHistoryList mocks base method.
-func (m *MockStorager) ReadUserHistoryList(user_id int64, sort string, ctx context.Context) ([]storage.Transf, error) {
+func (m *MockStorager) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]storage.Transfer, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadUserHistoryList", user_id, sort, ctx)
-	ret0, _ := ret[0].([]storage.Transf)
+	ret := m.ctrl.Call(m, "ReadUserHistoryList", ctx, user_id, order, limit, offset)
+	ret0, _ := ret[0].([]storage.Transfer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadUserHistoryList indicates an expected call of ReadUserHistoryList.
-func (mr *MockStoragerMockRecorder) ReadUserHistoryList(user_id, sort, ctx interface{}) *gomock.Call {
+func (mr *MockStoragerMockRecorder) ReadUserHistoryList(ctx, user_id, order, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUserHistoryList", reflect.TypeOf((*MockStorager)(nil).ReadUserHistoryList), user_id, sort, ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUserHistoryList", reflect.TypeOf((*MockStorager)(nil).ReadUserHistoryList), ctx, user_id, order, limit, offset)
 }
 
 // Transfer mocks base method.
-func (m *MockStorager) Transfer(user_id1, user_id2 int64, amount decimal.Decimal, ctx context.Context) error {
+func (m *MockStorager) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transfer", user_id1, user_id2, amount, ctx)
+	ret := m.ctrl.Call(m, "Transfer", ctx, user_id1, user_id2, amount)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Transfer indicates an expected call of Transfer.
-func (mr *MockStoragerMockRecorder) Transfer(user_id1, user_id2, amount, ctx interface{}) *gomock.Call {
+func (mr *MockStoragerMockRecorder) Transfer(ctx, user_id1, user_id2, amount interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), user_id1, user_id2, amount, ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), ctx, user_id1, user_id2, amount)
 }
 
 // Withdrawal mocks base method.
-func (m *MockStorager) Withdrawal(arg0 int64, arg1 decimal.Decimal, arg2 context.Context) error {
+func (m *MockStorager) Withdrawal(arg0 context.Context, arg1 int64, arg2 decimal.Decimal) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Withdrawal", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

@@ -24,7 +24,7 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		m.EXPECT().ReadClient(int64(1), context.Background()).Return(storage.User{
+		m.EXPECT().ReadUser(int64(1), context.Background()).Return(storage.UserBalance{
 			AccountID: 1,
 			Balance:   decimal.NewFromInt(10000),
 		}, nil)

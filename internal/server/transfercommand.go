@@ -10,8 +10,8 @@ import (
 )
 
 type jsTransferInf struct {
-	ID_1   int64
-	ID_2   int64
+	ID1    int64
+	ID2    int64
 	Amount float32
 }
 
@@ -27,7 +27,12 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	err = h.Store.Transfer(hand.ID_1, hand.ID_2, newBalance, r.Context())
+	if newBalance.Exponent() < -2 {
+		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Store.Transfer(r.Context(), hand.ID1, hand.ID2, newBalance)
 	if err != nil {
 		log.Fatal("Error transfer client", err.Error())
 		return

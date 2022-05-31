@@ -1,26 +1,23 @@
 package main
 
 import (
-	generatetable "http-avito-test/internal/generateTable"
-	"log"
+	"fmt"
 
-	"github.com/joho/godotenv"
-	"go.uber.org/zap"
+	"github.com/shopspring/decimal"
 )
 
 func main() {
 
-	if err := godotenv.Load("../../../.env"); err != nil {
-		log.Printf("No .env file found: %v", err)
-	}
+	a := 5355
+	b := -2
 
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("zap.NewDevelopment: %v", err)
-	}
-	defer logger.Sync()
+	c := -0.32
 
-	var s, _ = generatetable.NewStore(logger)
+	val := decimal.NewFromInt(int64(a)).Div(decimal.NewFromInt(int64(b)))
 
-	generatetable.AddGeneratedTable(s, 500, 1000000)
+	val2 := decimal.NewFromFloat(c).Exponent()
+
+	val3 := decimal.New(int64(a), int32(b))
+	fmt.Println(val, val2, val3)
+
 }
