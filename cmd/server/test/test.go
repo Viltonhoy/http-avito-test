@@ -2,22 +2,35 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/shopspring/decimal"
 )
+
+type Person struct {
+	Name string
+}
+
+func rename(person *Person) {
+	person.Name = "Alice"
+}
 
 func main() {
 
-	a := 5355
-	b := -2
+	person := &Person{
+		Name: "Bob",
+	}
 
-	c := -0.32
+	fmt.Println(person)
+	rename(person)
+	fmt.Println(person)
+	// a := 5355
+	// b := -2
 
-	val := decimal.NewFromInt(int64(a)).Div(decimal.NewFromInt(int64(b)))
+	// c := -0.32
 
-	val2 := decimal.NewFromFloat(c).Exponent()
+	// val := decimal.NewFromInt(int64(a)).Div(decimal.NewFromInt(int64(b)))
 
-	val3 := decimal.New(int64(a), int32(b))
-	fmt.Println(val, val2, val3)
+	// val2 := decimal.NewFromFloat(c).Exponent()
+
+	// val3 := decimal.New(int64(a), int32(b))
+	// fmt.Println(val, val2, val3)
 
 }

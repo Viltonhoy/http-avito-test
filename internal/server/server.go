@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"http-avito-test/internal/storage"
 	"log"
@@ -9,8 +10,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
 
@@ -20,9 +21,9 @@ type Server struct {
 	afterShutdown func()
 }
 
-func New() {
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Printf("No .env file found: %v", err)
+func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
+	if logger == nil {
+		return nil, errors.New("no logger provided")
 	}
 
 	logger, err := zap.NewDevelopment()
@@ -31,6 +32,8 @@ func New() {
 	}
 	defer logger.Sync()
 
+	mux := http.NewServeMux()
+
 	ctx := context.Background()
 
 	var s, _ = storage.NewStore(ctx, logger)
@@ -38,39 +41,47 @@ func New() {
 		Store: s,
 	}
 
-	http.HandleFunc("/read", h.ReadUser)
-	http.HandleFunc("/deposit", h.AccountDeposit)
-	http.HandleFunc("/transf", h.TransferCommand)
-	http.HandleFunc("/history", h.ReadUserHistory)
-	http.HandleFunc("/withdrawal", h.AccountWithdrawal)
-	port := ":9090"
-	err = http.ListenAndServe(port, nil)
-	if err != nil {
-		fmt.Errorf("failed to listen and serve: %v", err)
-		return
+	mux.HandleFunc("/read", h.ReadUser)
+	mux.HandleFunc("/deposit", h.AccountDeposit)
+	mux.HandleFunc("/transf", h.TransferCommand)
+	mux.HandleFunc("/history", h.ReadUserHistory)
+	mux.HandleFunc("/withdrawal", h.AccountWithdrawal)
+
+	conf := storage.NewAddrServerConfig()
+
+	httpServer := http.Server{
+		Handler: mux,
+		Addr:    fmt.Sprintf("%s:%d", conf.Host, conf.Port),
 	}
 
+	server := &Server{
+		logger:        logger,
+		httpServer:    &httpServer,
+		afterShutdown: afterShutdown,
+	}
+	return server, nil
 }
 
 func (s *Server) Start() error {
-	ConnClosed := make(chan struct{})
+	idleConnClosed := make(chan struct{})
 
 	go func() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
 		<-sigint
+
 		s.logger.Info("shutting down http server")
 
-		err := s.httpServer.Shutdown(context.Background())
-		if err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(ctx); err != nil {
 			s.logger.Error("failed to shutdown http server", zap.Error(err))
 			return
 		}
 
-		s.logger.Info("http server is stoped")
+		s.logger.Info("http server is stopped")
 
-		close(ConnClosed)
-		return
+		close(idleConnClosed)
 	}()
 
 	s.logger.Info("staring http server")
@@ -78,61 +89,9 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to listen and serve: %v", err)
 	}
 
-	<-ConnClosed
+	<-idleConnClosed
 
 	s.afterShutdown()
 
 	return nil
 }
-
-// func Start() {
-// 	ctx, cansel := context.WithCancel(context.Background())
-// 	var wg sync.WaitGroup
-// 	wg.Add(1)
-// 	go func() {
-// 		listen(ctx)
-
-// 		wg.Done()
-// 	}()
-// }
-
-// type Service interface {
-// 	Init(ctx context.Context) error
-// 	Ping(ctx context.Context) error
-// 	Close() error
-// }
-
-// type (
-// 	ServiceKeeper struct {
-// 		Services []Service
-// 		state    int32
-// 	}
-// )
-
-// func (s *ServiceKeeper) initAllServices(ctx context.Context) error {
-// 	for i := range s.Services {
-// 		if err := s.Services[i].Init(ctx); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
-// const (
-// 	srvStateInit int32 = iota
-// 	srvStateReady
-// 	srvStateRunning
-// 	srvStateShutdown
-// 	srvStateOff
-// )
-
-// func (s *ServiceKeeper) checkState(old, new int32) bool {
-// 	return atomic.CompareAndSwapInt32(&s.state, old, new)
-// }
-
-// func (s *ServiceKeeper) Init(ctx context.Context) error {
-// 	if !s.checkState(srvStateInit, srvStateReady) {
-// 		return errBadOrderType
-// 	}
-// 	return s.initAllServices(ctx)
-// }

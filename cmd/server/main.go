@@ -5,7 +5,6 @@ import (
 	"http-avito-test/internal/server"
 	"http-avito-test/internal/storage"
 	"log"
-	"net/http"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -24,19 +23,22 @@ func main() {
 
 	ctx := context.Background()
 
-	var s, _ = storage.NewStore(ctx, logger)
-	h := server.Handler{
-		Store: s,
+	storage, err := storage.NewStore(ctx, logger)
+	if err != nil {
+		logger.Fatal("failed to create storage instance", zap.Error(err))
 	}
 
-	http.HandleFunc("/read", h.ReadUser)
-	http.HandleFunc("/deposit", h.AccountDeposit)
-	http.HandleFunc("/transf", h.TransferCommand)
-	http.HandleFunc("/history", h.ReadUserHistory)
-	http.HandleFunc("/withdrawal", h.AccountWithdrawal)
-	port := ":9090"
-	err = http.ListenAndServe(port, nil)
+	srv, err := server.New(
+		logger,
+		storage.Close,
+	)
+
 	if err != nil {
-		log.Fatal("ListernAndServe", err)
+		logger.Fatal("failed to create http server instance", zap.Error(err))
+	}
+
+	err = srv.Start()
+	if err != nil {
+		logger.Fatal("failed to start or shutdown server", zap.Error(err))
 	}
 }

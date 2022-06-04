@@ -13,6 +13,11 @@ type DbServerConfig struct {
 	Database string
 }
 
+type DbAddrConfig struct {
+	Host string
+	Port int
+}
+
 type ExchangeGener struct {
 	Key string
 }
@@ -24,6 +29,13 @@ func NewDbSreverConfig() *DbServerConfig {
 		User:     getEnv("SERVER_USER", ""),
 		Password: getEnv("SERVER_PASSWORD", ""),
 		Database: getEnv("SERVER_DATABASE", ""),
+	}
+}
+
+func NewAddrServerConfig() *DbAddrConfig {
+	return &DbAddrConfig{
+		Host: getEnv("ADDR_HOST", ""),
+		Port: getEnvAsInt("ADDR_PORT", 1),
 	}
 }
 
