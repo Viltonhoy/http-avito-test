@@ -1,5 +1,8 @@
 package server
 
+import "go.uber.org/zap"
+
 type Handler struct {
-	Store Storager
+	Logger *zap.Logger
+	Store  Storager
 }

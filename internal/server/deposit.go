@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/shopspring/decimal"
@@ -20,7 +19,12 @@ func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
-		http.Error(w, "Empty request body", http.StatusBadRequest)
+		http.Error(w, "malformed request body", http.StatusBadRequest)
+		return
+	}
+
+	if hand.UserID <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
@@ -33,7 +37,8 @@ func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
 
 	err = h.Store.Deposit(r.Context(), hand.UserID, newBalance)
 	if err != nil {
-		log.Fatal("Error updating client", err.Error())
+		// log.Fatal("Error updating client", err.Error())
+
 		return
 	}
 

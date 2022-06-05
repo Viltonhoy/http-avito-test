@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/shopspring/decimal"
@@ -25,6 +24,11 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hand.ID1 <= 0 && hand.ID2 <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
+		return
+	}
+
 	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
 	if newBalance.Exponent() < -2 {
@@ -34,7 +38,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	err = h.Store.Transfer(r.Context(), hand.ID1, hand.ID2, newBalance)
 	if err != nil {
-		log.Fatal("Error transfer client", err.Error())
+		//log.Fatal("Error transfer client", err.Error())
 		return
 	}
 
