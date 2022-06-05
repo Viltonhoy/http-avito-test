@@ -20,7 +20,11 @@ func main() {
 	}
 	defer logger.Sync()
 
-	var s, _ = storage.NewStore(context.Background(), logger)
+	s, err := storage.NewStore(context.Background(), logger)
+	if err != nil {
+
+		return
+	}
 
 	storage.AddGeneratedTable(s, 5, 100)
 }

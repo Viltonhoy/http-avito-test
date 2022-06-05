@@ -42,7 +42,8 @@ func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 
 	err = pool.Ping(ctx)
 	if err != nil {
-		logger.Sugar().Fatalf("connection is lost", err)
+		logger.Error("connection is lost", zap.Error(err))
+		return &Storage{}, err
 	}
 
 	return &Storage{
@@ -58,7 +59,7 @@ func (s *Storage) Close() {
 
 func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, err error) {
 	logger := s.logger
-	logger.Sugar().Debug(`reading the balance of %d user`, user_id)
+	logger.With(zap.Int64(`reading the balance of %d user`, user_id))
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -70,7 +71,7 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		logger.Error("failed to refresh materialized view account_balances", zap.Error(err))
 		return UserBalance{}, err
 	}
 
@@ -80,7 +81,10 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&u.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("cannot return user with specified ID: %d", user_id)
+		logger.Error("cannot return user with specified ID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return u, errors.New("user does not exist")
+		}
 		return UserBalance{}, err
 	}
 
@@ -95,7 +99,7 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 
 func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
 	logger := s.logger
-	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %s`, user_id, amount)
+	logger.Info(``, zap.Int64(`Updating users account information ID: %d`, user_id), zap.String(`Balance: %s`, amount.String()))
 
 	var now = time.Now()
 
@@ -118,7 +122,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 	)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to insert record: %v", err)
+		logger.Error("failed to insert record", zap.Error(err))
 		return err
 	}
 
@@ -136,7 +140,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 	)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to insert record: %v", err)
+		logger.Error("failed to insert record: %v", zap.Error(err))
 		return err
 	}
 	err = tx.Commit(ctx)
@@ -145,7 +149,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 
 func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
 	logger := s.logger
-	logger.Sugar().Debugf(`Updating users account information: ID: %d, Balance: %d`, user_id, amount)
+	logger.With(zap.Int64(`Updating users account information: %d`, user_id), zap.String(`Balance: %s`, amount.String()))
 
 	var now = time.Now()
 
@@ -159,7 +163,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		logger.Error("failed to refresh materialized view account_balances", zap.Error(err))
 		return err
 	}
 
@@ -169,7 +173,11 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed ")
+		logger.Error("cannot return balance with specified ID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user does not exist")
+		}
+		return err
 	}
 
 	if amount.GreaterThan(balance.Balance) {
@@ -192,7 +200,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to insert record: %v", err)
+		logger.Error("failed to insert record: %v", zap.Error(err))
 		return err
 	}
 
@@ -210,7 +218,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to insert record: %v", err)
+		logger.Error("failed to insert record: %v", zap.Error(err))
 		return err
 	}
 	err = tx.Commit(ctx)
@@ -233,7 +241,7 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed to refresh materialized view account_balances", err)
+		logger.Error("failed to refresh materialized view account_balances", zap.Error(err))
 		return err
 	}
 
@@ -243,7 +251,11 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 	err = tx.QueryRow(ctx, selectSql, user_id1).Scan(&balance.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
-		logger.Sugar().Error("failed ")
+		logger.Error("cannot return balance with specified ID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user does not exist")
+		}
+		return err
 	}
 
 	if amount.GreaterThan(balance.Balance) {
@@ -292,9 +304,9 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 	return err
 }
 
-func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) (l []Transfer, err error) {
+func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]Transfer, error) {
 	logger := s.logger
-	logger.Debug("reading a history list")
+	logger.Info("reading a history list")
 
 	var sql string
 
@@ -320,19 +332,19 @@ func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order 
 	)
 
 	if err != nil {
-		logger.Sugar().Errorf("cannot return user list with specified ID: %d", user_id)
+		logger.Error("cannot return user list with specified ID")
 		return []Transfer{}, err
 	}
 
 	var list []Transfer
 	for rows.Next() {
-		var l Transfer
-		err := rows.Scan(&l.AcountID, &l.CBjournal, &l.Amount, &l.Date, &l.Addressee)
+		var tt Transfer
+		err := rows.Scan(&tt.AcountID, &tt.CBjournal, &tt.Amount, &tt.Date, &tt.Addressee)
 		if err != nil {
 			s.logger.Error("scanning row", zap.Error(err))
 		}
-		l.Amount = decimal.New(l.Amount.IntPart(), -2)
-		list = append(list, l)
+		tt.Amount = decimal.New(tt.Amount.IntPart(), -2)
+		list = append(list, tt)
 	}
 	return list, nil
 }

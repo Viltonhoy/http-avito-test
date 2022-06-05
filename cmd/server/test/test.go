@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"go.uber.org/zap"
 )
 
 type Person struct {
@@ -14,13 +14,6 @@ func rename(person *Person) {
 
 func main() {
 
-	person := &Person{
-		Name: "Bob",
-	}
-
-	fmt.Println(person)
-	rename(person)
-	fmt.Println(person)
 	// a := 5355
 	// b := -2
 
@@ -32,5 +25,16 @@ func main() {
 
 	// val3 := decimal.New(int64(a), int32(b))
 	// fmt.Println(val, val2, val3)
+
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	user_id := 3
+
+	logger.With(zap.Int("user_id", user_id))
+
+	logger.Info(`sdfsdf`)
+
+	logger.Info(`qwer`)
 
 }
