@@ -1,5 +1,4 @@
 create type operation_type as enum('deposit', 'withdrawal', 'transfer');
-GO
 
 CREATE TABLE posting(
 	id SERIAL PRIMARY KEY,
@@ -8,9 +7,9 @@ CREATE TABLE posting(
 	accounting_period text NOT NULL,
 	amount bigint NOT NULL,
 	date date NOT NULL,
-	addressee bigint 
+	addressee bigint,
+	description text 
 );
-GO
 
 create materialized view account_balances(
 user_id, balance	
@@ -20,12 +19,10 @@ user_id, balance
 from posting 
 group by account_id
 with no data;
-GO
 
 create materialized view history_table(
-account_id, cb_journal, amount, date, addressee
+account_id, cb_journal, amount, date, addressee, description
 ) as select
-	account_id, cb_journal, amount, date, addressee 
+	account_id, cb_journal, amount, date, addressee, description 
 from posting 
 with no data;
-Go

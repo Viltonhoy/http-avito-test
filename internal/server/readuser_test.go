@@ -29,7 +29,7 @@ func TestReadUser(t *testing.T) {
 			Balance:   decimal.NewFromInt(10000),
 		}, nil)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":""}`))
+		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Currency":""}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 

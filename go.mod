@@ -3,10 +3,10 @@ module http-avito-test
 go 1.17
 
 require (
+	github.com/caarlos0/env/v6 v6.9.3
 	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v4 v4.16.0
 	github.com/joho/godotenv v1.4.0
-	github.com/lib/pq v1.10.5
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.21.0
@@ -22,6 +22,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.11.0 // indirect
 	github.com/jackc/puddle v1.2.1 // indirect
+	github.com/lib/pq v1.10.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect

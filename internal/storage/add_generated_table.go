@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4"
+	"go.uber.org/zap"
 )
 
 func AddGeneratedTable(s *Storage, userCount, totalRecordCount int) {
 	logger := s.logger
-	logger.Sugar().Debug(`add %d new rows for %d users to database`, totalRecordCount, userCount)
+	logger.Info(`add new rows for users to database`, zap.Int("totalRecordCount", totalRecordCount), zap.Int("userCount", userCount))
 
 	columnName := []string{"account_id", "cb_journal", "accounting_period", "amount", "date", "addressee"}
 
@@ -34,7 +35,7 @@ func AddGeneratedTable(s *Storage, userCount, totalRecordCount int) {
 	start := time.Now()
 	num, err := s.db.CopyFrom(context.Background(), pgx.Identifier{"posting"}, columnName, pgx.CopyFromRows(newSlice))
 	if err != nil {
-		logger.Error("")
+		logger.Error("cannot add new rows", zap.Error(err))
 		return
 	}
 	duration := time.Since(start)

@@ -7,16 +7,17 @@ import (
 	"net/http"
 
 	"github.com/shopspring/decimal"
+	"go.uber.org/zap"
 )
 
 type jsReaderInf struct {
-	AccountID int64
-	Currency  string
+	UserID   int64
+	Currency string
 }
 
 type returnReader struct {
-	AccountID int64
-	Balance   decimal.Decimal
+	UserID  int64
+	Balance decimal.Decimal
 }
 
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
@@ -31,14 +32,15 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.AccountID <= 0 {
+	if hand.UserID <= 0 {
 		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.Store.ReadUser(r.Context(), hand.AccountID)
+	user, err := h.Store.ReadUser(r.Context(), hand.UserID)
 	if err != nil {
-		//log.Fatal("Error reading client", err.Error())
+		h.Logger.Error("error reading client", zap.Error(err))
+		http.Error(w, "error reading client", http.StatusBadRequest)
 		return
 	}
 
@@ -54,8 +56,8 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	readUser := returnReader{
-		AccountID: user.AccountID,
-		Balance:   newval,
+		UserID:  user.AccountID,
+		Balance: newval,
 	}
 
 	js, err := json.Marshal(readUser)

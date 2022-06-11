@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/zapadapter"
 	"github.com/jackc/pgx/v4/pgxpool"
-	_ "github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
@@ -26,10 +25,8 @@ func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 		return nil, errors.New("no logger provided")
 	}
 
-	conf := NewDbSreverConfig()
 	//строка подключения
-	var connString = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", conf.User, conf.Password, conf.Database)
-	config, _ := pgxpool.ParseConfig(connString)
+	config, _ := pgxpool.ParseConfig("")
 
 	config.ConnConfig.Logger = zapadapter.NewLogger(logger)
 	config.ConnConfig.LogLevel = pgx.LogLevelError
@@ -37,7 +34,8 @@ func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	// 	//создать пул соединений
 	pool, err := pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect using config %+v: %w", config, err)
+		logger.Error("cannot connect using config", zap.Error(err))
+		return nil, err
 	}
 
 	err = pool.Ping(ctx)
@@ -59,7 +57,7 @@ func (s *Storage) Close() {
 
 func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, err error) {
 	logger := s.logger
-	logger.With(zap.Int64(`reading the balance of %d user`, user_id))
+	logger.Info("reading the user balance", zap.Int64("userID", user_id))
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -99,7 +97,7 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 
 func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
 	logger := s.logger
-	logger.Info(``, zap.Int64(`Updating users account information ID: %d`, user_id), zap.String(`Balance: %s`, amount.String()))
+	logger.Info("money deposit", zap.Int64(`userID`, user_id), zap.String(`amount`, amount.String()))
 
 	var now = time.Now()
 
@@ -147,9 +145,9 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 	return err
 }
 
-func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal) (err error) {
+func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal, description string) (err error) {
 	logger := s.logger
-	logger.With(zap.Int64(`Updating users account information: %d`, user_id), zap.String(`Balance: %s`, amount.String()))
+	logger.Info("money withdrawal", zap.Int64(`userID`, user_id), zap.String(`amount`, amount.String()))
 
 	var now = time.Now()
 
@@ -186,8 +184,8 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 		return err
 	}
 
-	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
-			VALUES ($1, $4, $5, -1 * $2, $3);`
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, description)
+			VALUES ($1, $4, $5, -1 * $2, $3, $6);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -197,6 +195,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 		now.Format("2006-01-02 15:04:05"),
 		operationTypeWithdrawal,
 		fmt.Sprintf(`Period: %d`, now.Year()),
+		description,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -225,9 +224,9 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	return err
 }
 
-func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal) error {
+func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description string) error {
 	logger := s.logger
-	logger.Sugar().Debugf(`money transfer from %d user to %d`, user_id1, user_id2)
+	logger.Info("money transfer", zap.Int64("senderID", user_id1), zap.Int64("recipientID", user_id2), zap.String("amount", amount.String()))
 
 	var now = time.Now()
 
@@ -264,8 +263,8 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 		return err
 	}
 
-	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
-			VALUES ($1, $6, $4, -1 * $2, $3, $5);`
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee, description) 
+			VALUES ($1, $6, $4, -1 * $2, $3, $5, $7);`
 
 	_, err = tx.Exec(
 		ctx,
@@ -276,6 +275,7 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		user_id2,
 		operationTypeTransfer,
+		description,
 	)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -306,14 +306,14 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 
 func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]Transfer, error) {
 	logger := s.logger
-	logger.Info("reading a history list")
+	logger.Info("reading the user history list", zap.Int64("userID", user_id), zap.String("order", order), zap.Int64("limit", limit), zap.Int64("offset", offset))
 
 	var sql string
 
-	amountSql := `SELECT account_id, cb_journal, amount, date, addressee FROM posting 
+	amountSql := `SELECT account_id, cb_journal, amount, date, addressee, description FROM posting 
 		WHERE account_id = $1 ORDER BY amount LIMIT $2 OFFSET $3;`
 
-	dateSql := `SELECT account_id, cb_journal, amount, date, addressee FROM posting 
+	dateSql := `SELECT account_id, cb_journal, amount, date, addressee, description FROM posting 
 	WHERE account_id = $1 ORDER BY date LIMIT $2 OFFSET $3;`
 
 	switch order {
@@ -339,7 +339,7 @@ func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order 
 	var list []Transfer
 	for rows.Next() {
 		var tt Transfer
-		err := rows.Scan(&tt.AcountID, &tt.CBjournal, &tt.Amount, &tt.Date, &tt.Addressee)
+		err := rows.Scan(&tt.AcountID, &tt.CBjournal, &tt.Amount, &tt.Date, &tt.Addressee, &tt.Description)
 		if err != nil {
 			s.logger.Error("scanning row", zap.Error(err))
 		}

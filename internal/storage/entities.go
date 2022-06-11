@@ -12,11 +12,12 @@ type UserBalance struct {
 }
 
 type Transfer struct {
-	AcountID  int64           `json:"ID"`
-	CBjournal string          `json:"Type"`
-	Amount    decimal.Decimal `json:"Sum"`
-	Date      time.Time       `json:"Date"`
-	Addressee *int64          `json:"Addressee"`
+	AcountID    int64           `json:"ID"`
+	CBjournal   string          `json:"Type"`
+	Amount      decimal.Decimal `json:"Sum"`
+	Date        time.Time       `json:"Date"`
+	Addressee   *int64          `json:"Addressee"`
+	Description *string         `json:"Description"`
 }
 
 type operationType string

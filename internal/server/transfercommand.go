@@ -9,9 +9,10 @@ import (
 )
 
 type jsTransferInf struct {
-	ID1    int64
-	ID2    int64
-	Amount float32
+	UserID1     int64
+	UserID2     int64
+	Amount      float32
+	Description string
 }
 
 func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +25,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.ID1 <= 0 && hand.ID2 <= 0 {
+	if hand.UserID1 <= 0 && hand.UserID2 <= 0 {
 		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
@@ -36,7 +37,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Store.Transfer(r.Context(), hand.ID1, hand.ID2, newBalance)
+	err = h.Store.Transfer(r.Context(), hand.UserID1, hand.UserID2, newBalance, hand.Description)
 	if err != nil {
 		//log.Fatal("Error transfer client", err.Error())
 		return

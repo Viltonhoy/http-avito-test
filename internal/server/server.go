@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/caarlos0/env/v6"
 	"go.uber.org/zap"
 )
 
@@ -21,9 +22,19 @@ type Server struct {
 	afterShutdown func()
 }
 
+type ServerConfig struct {
+	Host string `env:"ADDR_HOST"`
+	Port int    `env:"ADDR_PORT"`
+}
+
 func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
+	}
+
+	cfg := ServerConfig{}
+	if err := env.Parse(&cfg); err != nil {
+		return nil, err
 	}
 
 	logger, err := zap.NewDevelopment()
@@ -47,11 +58,11 @@ func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
 	mux.HandleFunc("/history", h.ReadUserHistory)
 	mux.HandleFunc("/withdrawal", h.AccountWithdrawal)
 
-	conf := storage.NewAddrServerConfig()
+	//conf := storage.NewAddrServerConfig()
 
 	httpServer := http.Server{
 		Handler: mux,
-		Addr:    fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 	}
 
 	server := &Server{
@@ -84,7 +95,7 @@ func (s *Server) Start() error {
 		close(idleConnClosed)
 	}()
 
-	s.logger.Info("staring http server")
+	s.logger.Info("starting http server")
 	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		return fmt.Errorf("failed to listen and serve: %v", err)
 	}

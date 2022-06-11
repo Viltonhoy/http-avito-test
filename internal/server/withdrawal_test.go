@@ -17,7 +17,7 @@ func TestAccountWithdrawal(t *testing.T) {
 	defer ctrl.Finish()
 
 	m := NewMockStorager(ctrl)
-	m.EXPECT().Withdrawal(int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), gomock.Any()).Return(nil)
+	m.EXPECT().Withdrawal(int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), "", gomock.Any()).Return(nil)
 
 	arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
 	req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)

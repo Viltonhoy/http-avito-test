@@ -9,8 +9,9 @@ import (
 )
 
 type jsWithdrInf struct {
-	UserID int64
-	Amount float32
+	UserID      int64
+	Amount      float32
+	Description string
 }
 
 func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +36,7 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Store.Withdrawal(r.Context(), hand.UserID, newBalance)
+	err = h.Store.Withdrawal(r.Context(), hand.UserID, newBalance, hand.Description)
 	if err != nil {
 		//log.Fatal("Error updating client", err.Error())
 		return

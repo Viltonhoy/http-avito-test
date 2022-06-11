@@ -81,29 +81,29 @@ func (mr *MockStoragerMockRecorder) ReadUserHistoryList(ctx, user_id, order, lim
 }
 
 // Transfer mocks base method.
-func (m *MockStorager) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal) error {
+func (m *MockStorager) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transfer", ctx, user_id1, user_id2, amount)
+	ret := m.ctrl.Call(m, "Transfer", ctx, user_id1, user_id2, amount, description)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Transfer indicates an expected call of Transfer.
-func (mr *MockStoragerMockRecorder) Transfer(ctx, user_id1, user_id2, amount interface{}) *gomock.Call {
+func (mr *MockStoragerMockRecorder) Transfer(ctx, user_id1, user_id2, amount, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), ctx, user_id1, user_id2, amount)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), ctx, user_id1, user_id2, amount, description)
 }
 
 // Withdrawal mocks base method.
-func (m *MockStorager) Withdrawal(arg0 context.Context, arg1 int64, arg2 decimal.Decimal) error {
+func (m *MockStorager) Withdrawal(arg0 context.Context, arg1 int64, arg2 decimal.Decimal, arg3 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Withdrawal", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Withdrawal", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Withdrawal indicates an expected call of Withdrawal.
-func (mr *MockStoragerMockRecorder) Withdrawal(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockStoragerMockRecorder) Withdrawal(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Withdrawal", reflect.TypeOf((*MockStorager)(nil).Withdrawal), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Withdrawal", reflect.TypeOf((*MockStorager)(nil).Withdrawal), arg0, arg1, arg2, arg3)
 }
