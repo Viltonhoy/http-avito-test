@@ -4,16 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
-)
 
-type jsHistoryReader struct {
-	UserID int64
-	Order  ordBy
-	Limit  int64
-	Offset int64
-}
+	"go.uber.org/zap"
+)
 
 type ordBy string
 
@@ -32,9 +26,9 @@ func (j *ordBy) UnmarshalJSON(v []byte) error {
 	}
 
 	switch s {
-	case "amount":
+	case string(orderByAmount):
 		*j = orderByAmount
-	case "date":
+	case string(orderByDate):
 		*j = orderByDate
 	default:
 		return errBadOrderType
@@ -44,7 +38,7 @@ func (j *ordBy) UnmarshalJSON(v []byte) error {
 }
 
 func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
-	var hand *jsHistoryReader
+	var hand *ReadUserHistoryRequest
 
 	body, _ := ioutil.ReadAll(r.Body)
 
@@ -61,16 +55,31 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	hist, err := h.Store.ReadUserHistoryList(r.Context(), hand.UserID, string(hand.Order), hand.Limit, hand.Offset)
-	if err != nil {
-		log.Panic("Error reading history", err.Error())
+	if hand.UserID <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
-	js, err := json.Marshal(hist)
+	hist, err := h.Store.ReadUserHistoryList(r.Context(), hand.UserID, string(hand.Order), hand.Limit, hand.Offset)
+	if err != nil {
+		http.Error(w, "can not read user history", http.StatusInternalServerError)
+		return
+	}
+
+	result := ReadUserHistoryResponse{
+		Result: hist,
+		Status: "ok",
+	}
+
+	marshalledRequest, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	w.Write(js)
+	w.WriteHeader(http.StatusOK)
+	_, writeErr := w.Write(marshalledRequest)
+	if err != nil {
+		h.Logger.Error("failed to write connection", zap.Error(writeErr))
+		return
+	}
 }

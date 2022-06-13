@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"http-avito-test/internal/storage"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,10 +36,6 @@ func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
 		return nil, err
 	}
 
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("zap.NewDevelopment: %v", err)
-	}
 	defer logger.Sync()
 
 	mux := http.NewServeMux()
@@ -57,8 +52,6 @@ func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
 	mux.HandleFunc("/transf", h.TransferCommand)
 	mux.HandleFunc("/history", h.ReadUserHistory)
 	mux.HandleFunc("/withdrawal", h.AccountWithdrawal)
-
-	//conf := storage.NewAddrServerConfig()
 
 	httpServer := http.Server{
 		Handler: mux,

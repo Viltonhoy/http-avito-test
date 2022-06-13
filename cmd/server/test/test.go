@@ -2,18 +2,17 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 func main() {
 
-	var name string
-	fmt.Println("Как тебя зовут?")
-	fmt.Scanf("%s\n", &name)
+	// argsWithProg := os.Args
+	argsWithoutProg := os.Args[1:]
 
-	var age int
-	fmt.Println("Сколько тебе лет?")
-	fmt.Scanf("%d\n", &age)
+	// arg := os.Args[3]
 
-	fmt.Printf("Привет, %s, твой возраст - %d\n", name, age)
-
+	// fmt.Println(argsWithProg)
+	fmt.Println(argsWithoutProg)
+	// fmt.Println(arg)
 }

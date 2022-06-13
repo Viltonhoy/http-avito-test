@@ -2,20 +2,18 @@ version: '3.7'
 
 services:
   app:
-    image: app
-    container_name: server
+    image: service-app
+    container_name: service-http-avito-test
     build: 
       context: ../
       dockerfile: build/package/Dockerfile
-    env_file:
-      - ../.env
-    environment:
-      PGHOST: "postgres"
-      PGPORT: "5432"  
     ports:
       - "9090:9090"
+    volumes: 
+      - "../.env:/.env"  
     depends_on:
-      - postgres
+      - postgres  
+
 
   postgres:
     image: postgres:12.3

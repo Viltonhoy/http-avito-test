@@ -7,17 +7,17 @@ import (
 )
 
 type UserBalance struct {
-	AccountID int64           `json:"ID"`
+	AccountID int64           `json:"UserID"`
 	Balance   decimal.Decimal `json:"Balance"`
 }
 
-type Transfer struct {
-	AcountID    int64           `json:"ID"`
-	CBjournal   string          `json:"Type"`
-	Amount      decimal.Decimal `json:"Sum"`
-	Date        time.Time       `json:"Date"`
-	Addressee   *int64          `json:"Addressee"`
-	Description *string         `json:"Description"`
+type ReadUserHistoryResult struct {
+	AcountID    int64           `json:"userID"`
+	CBjournal   string          `json:"cbJournal"`
+	Amount      decimal.Decimal `json:"amount"`
+	Date        time.Time       `json:"date"`
+	Addressee   *int64          `json:"addressee"`
+	Description *string         `json:"description"`
 }
 
 type operationType string

@@ -25,10 +25,14 @@ const (
 
 const cacheBookAccountID = int64(0)
 
+//  GenerateTableData generates a slice of user data values ​​that will be added to the table for performance tests.
+//  Function takes userCount and totalRecordCount int values.
 func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	postingTable := make([]Posting, 0, totalRecordCount)
 	userTotalBalances := make(map[int64]int64, userCount)
 
+	// Generating first values ​​for each user id with big amount values for
+	//
 	for i := 1; i <= userCount; i++ {
 		year := fmt.Sprintf(`Period: %d`, time.Now().Year())
 		amountValue := rand.Int63n(10000000) * 100

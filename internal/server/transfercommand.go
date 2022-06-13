@@ -6,17 +6,11 @@ import (
 	"net/http"
 
 	"github.com/shopspring/decimal"
+	"go.uber.org/zap"
 )
 
-type jsTransferInf struct {
-	UserID1     int64
-	UserID2     int64
-	Amount      float32
-	Description string
-}
-
 func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
-	var hand *jsTransferInf
+	var hand *TransferCommandRequest
 
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
@@ -32,21 +26,44 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	var newBalance = decimal.NewFromFloat32(hand.Amount).Mul(decimal.NewFromInt(100))
 
-	if newBalance.Exponent() < -2 {
+	switch {
+	case newBalance.Exponent() < -2:
+		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		return
+	case newBalance.LessThanOrEqual(decimal.NewFromInt(int64(0))):
 		http.Error(w, "wrong value of amount", http.StatusBadRequest)
 		return
 	}
 
+	if *hand.Description == "" {
+		hand.Description = nil
+	}
+
 	err = h.Store.Transfer(r.Context(), hand.UserID1, hand.UserID2, newBalance, hand.Description)
 	if err != nil {
-		//log.Fatal("Error transfer client", err.Error())
+		http.Error(w, "Error updating balance", http.StatusInternalServerError)
 		return
 	}
 
-	js, err := json.Marshal("Transfer was successfull!")
+	result := TransferCommandResponse{
+		Result: struct {
+			Message string
+		}{
+			Message: resultMessage,
+		},
+		Status: "ok",
+	}
+
+	marshalledRequest, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	w.Write(js)
+
+	w.WriteHeader(http.StatusOK)
+	_, writeErr := w.Write(marshalledRequest)
+	if err != nil {
+		h.Logger.Error("failed to write connection", zap.Error(writeErr))
+		return
+	}
 }

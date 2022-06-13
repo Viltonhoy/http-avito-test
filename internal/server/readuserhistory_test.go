@@ -18,7 +18,7 @@ import (
 
 func TestReadUserHostory(t *testing.T) {
 	t.Run("green case", func(t *testing.T) {
-		var testHistoryList = []storage.Transfer{
+		var testHistoryList = []storage.ReadUserHistoryResult{
 			{
 				AcountID:  1,
 				CBjournal: "deposit",
@@ -46,7 +46,7 @@ func TestReadUserHostory(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), 1, "amount", 100, 0).Return([]storage.Transfer{
+		m.EXPECT().ReadUserHistoryList(context.Background(), 1, "amount", 100, 0).Return([]storage.ReadUserHistoryResult{
 			{
 				AcountID:  1,
 				CBjournal: "deposit",

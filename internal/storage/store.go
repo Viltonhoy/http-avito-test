@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storage defines fields used in interaction processes of database
 type Storage struct {
 	logger *zap.Logger
 	db     *pgxpool.Pool
@@ -20,18 +21,19 @@ type Storage struct {
 
 const cacheBookAccountID = int64(0)
 
+// NewStore constructs Store instance with configured logger
 func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
 	}
 
-	//строка подключения
+	// taking connect info from environment variables
 	config, _ := pgxpool.ParseConfig("")
 
 	config.ConnConfig.Logger = zapadapter.NewLogger(logger)
 	config.ConnConfig.LogLevel = pgx.LogLevelError
 
-	// 	//создать пул соединений
+	// create a pool connection
 	pool, err := pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
 		logger.Error("cannot connect using config", zap.Error(err))
@@ -50,11 +52,13 @@ func NewStore(ctx context.Context, logger *zap.Logger) (*Storage, error) {
 	}, err
 }
 
+// Close closes all database connections in pool
 func (s *Storage) Close() {
 	s.logger.Info("closing Storage connection")
 	s.db.Close()
 }
 
+//ReadUser reads user's balance and returns it's id and balance
 func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, err error) {
 	logger := s.logger
 	logger.Info("reading the user balance", zap.Int64("userID", user_id))
@@ -75,7 +79,7 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 
 	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
 
-	//выполнить запрос
+	//query execution
 	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&u.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -114,7 +118,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 		firstInsertSql,
 		user_id,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		operationTypeDeposit,
 		fmt.Sprintf(`Period: %d`, now.Year()),
 	)
@@ -131,7 +135,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 		ctx,
 		secondInsertSql,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		operationTypeDeposit,
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		cacheBookAccountID,
@@ -145,7 +149,7 @@ func (s *Storage) Deposit(ctx context.Context, user_id int64, amount decimal.Dec
 	return err
 }
 
-func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal, description string) (err error) {
+func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.Decimal, description *string) (err error) {
 	logger := s.logger
 	logger.Info("money withdrawal", zap.Int64(`userID`, user_id), zap.String(`amount`, amount.String()))
 
@@ -192,7 +196,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 		firstInsertSql,
 		user_id,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		operationTypeWithdrawal,
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		description,
@@ -210,7 +214,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 		ctx,
 		secondInsertSql,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		operationTypeWithdrawal,
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		cacheBookAccountID,
@@ -224,7 +228,7 @@ func (s *Storage) Withdrawal(ctx context.Context, user_id int64, amount decimal.
 	return err
 }
 
-func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description string) error {
+func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description *string) error {
 	logger := s.logger
 	logger.Info("money transfer", zap.Int64("senderID", user_id1), zap.Int64("recipientID", user_id2), zap.String("amount", amount.String()))
 
@@ -271,7 +275,7 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 		firstInsertSql,
 		user_id1,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		user_id2,
 		operationTypeTransfer,
@@ -290,7 +294,7 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 		secondInsertSql,
 		user_id2,
 		amount,
-		now.Format("2006-01-02 15:04:05"),
+		now.Format(time.RFC3339),
 		fmt.Sprintf(`Period: %d`, now.Year()),
 		user_id1,
 		operationTypeTransfer,
@@ -304,7 +308,7 @@ func (s *Storage) Transfer(ctx context.Context, user_id1, user_id2 int64, amount
 	return err
 }
 
-func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]Transfer, error) {
+func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]ReadUserHistoryResult, error) {
 	logger := s.logger
 	logger.Info("reading the user history list", zap.Int64("userID", user_id), zap.String("order", order), zap.Int64("limit", limit), zap.Int64("offset", offset))
 
@@ -333,12 +337,12 @@ func (s *Storage) ReadUserHistoryList(ctx context.Context, user_id int64, order 
 
 	if err != nil {
 		logger.Error("cannot return user list with specified ID")
-		return []Transfer{}, err
+		return []ReadUserHistoryResult{}, err
 	}
 
-	var list []Transfer
+	var list []ReadUserHistoryResult
 	for rows.Next() {
-		var tt Transfer
+		var tt ReadUserHistoryResult
 		err := rows.Scan(&tt.AcountID, &tt.CBjournal, &tt.Amount, &tt.Date, &tt.Addressee, &tt.Description)
 		if err != nil {
 			s.logger.Error("scanning row", zap.Error(err))

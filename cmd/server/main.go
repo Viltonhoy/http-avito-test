@@ -11,15 +11,15 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Printf("No .env file found: %v", err)
-	}
-
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("zap.NewDevelopment: %v", err)
 	}
 	defer logger.Sync()
+
+	if err := godotenv.Load("../../.env"); err != nil {
+		logger.Debug("No .env file found", zap.Error(err))
+	}
 
 	ctx := context.Background()
 

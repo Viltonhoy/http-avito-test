@@ -16,6 +16,6 @@ EXPOSE 9090
 
 RUN CGO_ENABLED=0 go build \
  -installsuffix `static` \
- -v -o /usr/local/bin/app cmd/server/main.go
+ -v -o /app cmd/server/main.go
 
-ENTRYPOINT ["app"]
+ENTRYPOINT ["/app"]
