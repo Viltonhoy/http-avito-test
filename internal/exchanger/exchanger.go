@@ -5,13 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
+
+type ExchangerClient struct {
+	Client *http.Client
+}
+
+func New() *ExchangerClient {
+	return &ExchangerClient{Client: &http.Client{}}
+}
 
 type ExchangeResult struct {
 	Result float32         `json:"result"`
@@ -31,11 +38,9 @@ const ErrorExchangerMessage = "You have entered an invalid \"to\" property. [Exa
 
 var ErrExchanger = errors.New(ErrorExchangerMessage)
 
-func (e *ExchangeResult) ExchangeRates(value decimal.Decimal, currency string) (decimal.Decimal, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("zap.NewDevelopment: %v", err)
-	}
+func (e *ExchangerClient) ExchangeRates(logger *zap.Logger, value decimal.Decimal, currency string) (decimal.Decimal, error) {
+	logger.Debug("starting exchanger rates")
+
 	logger.Sync()
 
 	var ex *ExchangeResult
@@ -48,7 +53,6 @@ func (e *ExchangeResult) ExchangeRates(value decimal.Decimal, currency string) (
 
 	url := fmt.Sprintf(`https://api.apilayer.com/exchangerates_data/convert?to=%s&from=RUB&amount=%s`, currency, value)
 
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("apikey", cfg.Key)
 
@@ -56,7 +60,7 @@ func (e *ExchangeResult) ExchangeRates(value decimal.Decimal, currency string) (
 		logger.Error("bad request error", zap.Error(err))
 		return decimal.NewFromInt(0), err
 	}
-	res, _ := client.Do(req)
+	res, _ := e.Client.Do(req)
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
