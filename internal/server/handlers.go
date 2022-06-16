@@ -1,8 +1,11 @@
 package server
 
-import "go.uber.org/zap"
+import (
+	"go.uber.org/zap"
+)
 
 type Handler struct {
-	Logger *zap.Logger
-	Store  Storager
+	Logger    *zap.Logger
+	Store     Storager
+	Exchanger Exchanger
 }
