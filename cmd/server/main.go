@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"http-avito-test/internal/exchanger"
 	"http-avito-test/internal/server"
 	"http-avito-test/internal/storage"
 	"log"
@@ -23,14 +24,18 @@ func main() {
 
 	ctx := context.Background()
 
-	storage, err := storage.NewStore(ctx, logger)
+	storage, err := storage.NewStorage(ctx, logger)
 	if err != nil {
 		logger.Fatal("failed to create storage instance", zap.Error(err))
 	}
 
+	e := exchanger.New()
+
 	srv, err := server.New(
 		logger,
+		storage,
 		storage.Close,
+		e,
 	)
 
 	if err != nil {
