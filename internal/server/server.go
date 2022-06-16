@@ -26,7 +26,7 @@ type ServerConfig struct {
 	Port int    `env:"ADDR_PORT"`
 }
 
-func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
+func New(logger *zap.Logger, storage *storage.Storage, afterShutdown func(), e Exchanger) (*Server, error) {
 	if logger == nil {
 		return nil, errors.New("no logger provided")
 	}
@@ -40,11 +40,10 @@ func New(logger *zap.Logger, afterShutdown func()) (*Server, error) {
 
 	mux := http.NewServeMux()
 
-	ctx := context.Background()
-
-	var s, _ = storage.NewStore(ctx, logger)
 	h := Handler{
-		Store: s,
+		Logger:    logger,
+		Store:     storage,
+		Exchanger: e,
 	}
 
 	mux.HandleFunc("/read", h.ReadUser)
