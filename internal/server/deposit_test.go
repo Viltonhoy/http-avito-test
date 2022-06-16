@@ -2,6 +2,8 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,23 +15,111 @@ import (
 )
 
 func TestAccountDeposit(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Run("green case", func(t *testing.T) {
+		var testDeposit = AccountDepositResponse{
+			Result: struct {
+				Message string
+			}{
+				Message: "balance updated successfully",
+			},
+			Status: "ok",
+		}
 
-	m := NewMockStorager(ctrl)
-	m.EXPECT().Deposit(int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), gomock.Any()).Return(nil)
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-	arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
-	req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
-	w := httptest.NewRecorder()
+		m := NewMockStorager(ctrl)
+		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(nil)
 
-	s := Handler{
-		Store: m,
-	}
+		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Amount":100.00}`))
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
+		w := httptest.NewRecorder()
 
-	s.AccountDeposit(w, req)
-	resptest := "\"Balance updateted successfully!\""
-	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(t, resptest, string(body))
+		s := Handler{
+			Store: m,
+		}
+
+		s.AccountDeposit(w, req)
+
+		resp := w.Result()
+		body, _ := ioutil.ReadAll(resp.Body)
+
+		js, err := json.Marshal(testDeposit)
+		assert.NoError(t, err)
+
+		assert.Equal(t, string(js), string(body))
+	})
+
+	t.Run("empty request body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", nil)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.ReadUserHistory(w, req)
+
+		body, err := ioutil.ReadAll(w.Body)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "malformed request body\n", string(body))
+	})
+
+	t.Run("wrong UserID value", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+
+		arg := bytes.NewBuffer([]byte(`{"UserID":0, "Amount":100.00}`))
+
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.ReadUserHistory(w, req)
+
+		body, err := ioutil.ReadAll(w.Body)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "wrong value of \"User_id\"\n", string(body))
+	})
+
+	t.Run("error updating balance", func(t *testing.T) {
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		err := errors.New("Error updating balance")
+
+		m := NewMockStorager(ctrl)
+		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(err)
+
+		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Amount":100.00}`))
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.AccountDeposit(w, req)
+
+		resp := w.Result()
+		body, _ := ioutil.ReadAll(resp.Body)
+
+		result := "Error updating balance\n"
+
+		assert.Equal(t, result, string(body))
+	})
+
 }
