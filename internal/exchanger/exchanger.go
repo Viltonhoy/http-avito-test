@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/shopspring/decimal"
@@ -17,15 +18,16 @@ type ExchangerClient struct {
 }
 
 func New() *ExchangerClient {
-	return &ExchangerClient{Client: &http.Client{}}
+	return &ExchangerClient{Client: &http.Client{
+		Timeout: 5 * time.Second}}
 }
 
 type ExchangeResult struct {
 	Result float32         `json:"result"`
-	Err    *codeAndMassage `json:"error"`
+	Err    *codeAndMessage `json:"error"`
 }
 
-type codeAndMassage struct {
+type codeAndMessage struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
