@@ -82,9 +82,9 @@ func (s *Storage) ReadUser(ctx context.Context, user_id int64) (u UserBalance, e
 	err = tx.QueryRow(ctx, selectSql, user_id).Scan(&u.Balance)
 	if err != nil {
 		tx.Rollback(ctx)
-		s.Logger.Error("cannot return user with specified ID")
+		s.Logger.Error("cannot return user with specified id")
 		if errors.Is(err, pgx.ErrNoRows) {
-			return u, errors.New("user does not exist")
+			return u, errors.New("user does not exist ")
 		}
 		return UserBalance{}, err
 	}
