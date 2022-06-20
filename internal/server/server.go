@@ -53,8 +53,10 @@ func New(logger *zap.Logger, storage *storage.Storage, afterShutdown func(), e E
 	mux.HandleFunc("/withdrawal", h.AccountWithdrawal)
 
 	httpServer := http.Server{
-		Handler: mux,
-		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		Handler:      mux,
+		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	server := &Server{
