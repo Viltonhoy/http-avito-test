@@ -1,0 +1,266 @@
+openapi: 3.0.0
+info: 
+  version: 1.0.0
+  title: server API
+  description: yaml file for description the response data
+
+paths: 
+  /api/{version}/readuser:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:
+      summary: Read user
+      operationId: ReadUser 
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadUserRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadUserResponse'
+
+  /api/{version}/readuserhistory:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:
+      summary: Read user history
+      operationId: ReadUserHistory 
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadUserHistoryRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadUserHistoryResponse'
+          
+  /api/{version}/accountdeposit:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:
+      summary: Account deposit
+      operationId: AccountDeposit 
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDepositRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDepositResponse'
+
+  /api/{version}/accountwithdrawal:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:
+      summary: Account withdrawal
+      operationId: AccountWithdrawal 
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountWithdrawalRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountWithdrawalResponse'
+
+  /api/{version}/transfercommand:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:
+      summary: Transfer command
+      operationId: TransferCommand 
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferCommandRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferCommandResponse'
+
+components:
+
+  parameters:
+    Version:
+      name: version
+      description: api version
+      in: path 
+      schema: 
+        type: integer
+      required: true
+
+  schemas:
+    OrdBy:
+      type: string
+      enum:
+        - amount
+        - date
+
+    ReadUserRequest:
+      type: object
+      properties:
+        userid:
+          type: integer
+        currency: 
+          type: string
+      required:
+        - userid
+        - currency
+
+    ReadUserHistoryRequest:
+      type: object
+      properties:
+        userid: 
+          type: integer
+        order: 
+          $ref: '#/components/schemas/OrdBy'
+        limit: 
+          type: integer
+        offset: 
+          type: integer 
+      required:	
+        - userid
+        - order
+        - limit
+        - offset
+
+    AccountDepositRequest:
+      type: object
+      properties:
+        userid: 
+          type: integer
+        amount: 
+          type: number
+      required: 
+        - userid
+        - amount    
+
+    AccountWithdrawalRequest:
+      type: object
+      properties:
+        userid: 
+          type: integer
+        amount: 
+          type: number 
+        description:
+          type: string
+          nullable: true
+      required: 
+        - userid
+        - amount
+        - description	
+
+    TransferCommandRequest:
+      type: object
+      properties:
+        userid1:
+          type: integer
+        userid2: 
+          type: integer
+        amount:
+          type: number
+        description:
+          type: string
+          nullable: true
+      required:
+        - userid1
+        - userid2
+        - amount
+        - description
+
+    ReadUserResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        result:
+          type: object
+          properties:
+            userid:
+              type: integer
+            balance:
+              x-go-type: decimal.Decimal
+              x-go-type-import:
+                name: decimal
+                path: github.com/shopspring/decimal
+          required:
+            - userid
+            - balance       
+      required: 
+        - status
+        - result   
+
+    ReadUserHistoryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        result:
+          type: array
+          items:
+            x-go-type: storage.ReadUserHistoryResult
+            x-go-type-import: 
+              name: readuserhistoryresult
+              path: http-avito-test/internal/storage
+      required: 
+        - status
+        - result
+            
+    AccountDepositResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        result:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+      required:
+        - status
+        - result
+
+    AccountWithdrawalResponse:
+      $ref: '#/components/schemas/AccountDepositResponse'
+
+    TransferCommandResponse:
+      $ref: '#/components/schemas/AccountDepositResponse'
