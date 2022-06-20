@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"http-avito-test/internal/generated"
 	"io/ioutil"
 	"net/http"
 
@@ -38,7 +39,7 @@ func (j *ordBy) UnmarshalJSON(v []byte) error {
 }
 
 func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
-	var hand *ReadUserHistoryRequest
+	var hand *generated.ReadUserHistoryRequest
 
 	body, _ := ioutil.ReadAll(r.Body)
 
@@ -55,18 +56,23 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if hand.UserID <= 0 {
-		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
+	if hand.Userid <= 0 {
+		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
 		return
 	}
 
-	hist, err := h.Store.ReadUserHistoryList(r.Context(), hand.UserID, string(hand.Order), hand.Limit, hand.Offset)
+	hist, err := h.Store.ReadUserHistoryList(r.Context(), int64(hand.Userid), string(hand.Order), int64(hand.Limit), int64(hand.Offset))
 	if err != nil {
 		http.Error(w, "can not read user history", http.StatusInternalServerError)
 		return
 	}
 
-	result := ReadUserHistoryResponse{
+	if hist == nil {
+		http.Error(w, "user does not exist", http.StatusBadRequest)
+		return
+	}
+
+	result := generated.ReadUserHistoryResponse{
 		Result: hist,
 		Status: "ok",
 	}

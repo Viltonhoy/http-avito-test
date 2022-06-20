@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"http-avito-test/internal/exchanger"
+	"http-avito-test/internal/generated"
 	"io/ioutil"
 	"net/http"
 
@@ -18,7 +19,7 @@ const (
 )
 
 func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
-	var hand *ReadUserRequest
+	var hand *generated.ReadUserRequest
 
 	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -28,8 +29,8 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.UserID <= 0 {
-		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
+	if hand.Userid <= 0 {
+		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
 		return
 	}
 
@@ -38,13 +39,13 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Store.ReadUser(r.Context(), hand.UserID)
+	user, err := h.Store.ReadUser(r.Context(), int64(hand.Userid))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "user does not exist", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, "can not read user balance", http.StatusInternalServerError)
+		http.Error(w, "cannot read user with specified id", http.StatusInternalServerError)
 		return
 	}
 
@@ -68,13 +69,13 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		newval = exchval
 	}
 
-	result := ReadUserResponse{
+	result := generated.ReadUserResponse{
 		Result: struct {
-			UserID  int64           "json:\"userID\""
 			Balance decimal.Decimal "json:\"balance\""
+			Userid  int             "json:\"userid\""
 		}{
-			UserID:  user.AccountID,
 			Balance: newval,
+			Userid:  int(user.AccountID),
 		},
 		Status: "ok",
 	}

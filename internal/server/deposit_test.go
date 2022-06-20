@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"http-avito-test/internal/generated"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -16,9 +17,9 @@ import (
 
 func TestAccountDeposit(t *testing.T) {
 	t.Run("green case", func(t *testing.T) {
-		var testDeposit = AccountDepositResponse{
+		var testDeposit = generated.AccountDepositResponse{
 			Result: struct {
-				Message string
+				Message string "json:\"message\""
 			}{
 				Message: "balance updated successfully",
 			},

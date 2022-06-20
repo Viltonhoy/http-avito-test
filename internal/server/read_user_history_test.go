@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"http-avito-test/internal/generated"
 	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 
 func TestReadUserHostory(t *testing.T) {
 	t.Run("green case", func(t *testing.T) {
-		var testHistoryList = ReadUserHistoryResponse{
+		var testHistoryList = generated.ReadUserHistoryResponse{
 			Result: []storage.ReadUserHistoryResult{
 				{
 					AccountID:   1,

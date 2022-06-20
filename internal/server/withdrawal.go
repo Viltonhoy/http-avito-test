@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"http-avito-test/internal/generated"
 	"io/ioutil"
 	"net/http"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
-	var hand *AccountWithdrawalRequest
+	var hand *generated.AccountWithdrawalRequest
 
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
@@ -19,8 +20,8 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.UserID <= 0 {
-		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
+	if hand.Userid <= 0 {
+		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
 		return
 	}
 
@@ -39,17 +40,17 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		hand.Description = nil
 	}
 
-	err = h.Store.Withdrawal(r.Context(), hand.UserID, newBalance, hand.Description)
+	err = h.Store.Withdrawal(r.Context(), int64(hand.Userid), newBalance, hand.Description)
 	if err != nil {
 		http.Error(w, "Error updating balance", http.StatusInternalServerError)
 		return
 	}
 
-	result := AccountWithdrawalResponse{
+	result := generated.AccountWithdrawalResponse{
 		Result: struct {
-			Message string
+			Message string "json:\"message\""
 		}{
-			Message: resultMessage,
+			Message: ResultMessage,
 		},
 		Status: "ok",
 	}
