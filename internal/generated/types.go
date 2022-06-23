@@ -9,16 +9,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Defines values for OrdBy.
-const (
-	Amount OrdBy = "amount"
-	Date   OrdBy = "date"
-)
-
 // AccountDepositRequest defines model for AccountDepositRequest.
 type AccountDepositRequest struct {
 	Amount float32 `json:"amount"`
-	Userid int     `json:"userid"`
+	UserId int     `json:"user_id"`
 }
 
 // AccountDepositResponse defines model for AccountDepositResponse.
@@ -33,21 +27,18 @@ type AccountDepositResponse struct {
 type AccountWithdrawalRequest struct {
 	Amount      float32 `json:"amount"`
 	Description *string `json:"description"`
-	Userid      int     `json:"userid"`
+	UserId      int     `json:"user_id"`
 }
 
 // AccountWithdrawalResponse defines model for AccountWithdrawalResponse.
 type AccountWithdrawalResponse = AccountDepositResponse
 
-// OrdBy defines model for OrdBy.
-type OrdBy string
-
 // ReadUserHistoryRequest defines model for ReadUserHistoryRequest.
 type ReadUserHistoryRequest struct {
-	Limit  int   `json:"limit"`
-	Offset int   `json:"offset"`
-	Order  OrdBy `json:"order"`
-	Userid int   `json:"userid"`
+	Limit  int           `json:"limit"`
+	Offset int           `json:"offset"`
+	Order  storage.OrdBy `json:"order"`
+	UserId int           `json:"user_id"`
 }
 
 // ReadUserHistoryResponse defines model for ReadUserHistoryResponse.
@@ -59,14 +50,14 @@ type ReadUserHistoryResponse struct {
 // ReadUserRequest defines model for ReadUserRequest.
 type ReadUserRequest struct {
 	Currency string `json:"currency"`
-	Userid   int    `json:"userid"`
+	UserId   int    `json:"user_id"`
 }
 
 // ReadUserResponse defines model for ReadUserResponse.
 type ReadUserResponse struct {
 	Result struct {
 		Balance decimal.Decimal `json:"balance"`
-		Userid  int             `json:"userid"`
+		UserId  int             `json:"user_id"`
 	} `json:"result"`
 	Status string `json:"status"`
 }
@@ -75,8 +66,8 @@ type ReadUserResponse struct {
 type TransferCommandRequest struct {
 	Amount      float32 `json:"amount"`
 	Description *string `json:"description"`
-	Userid1     int     `json:"userid1"`
-	Userid2     int     `json:"userid2"`
+	Recipient   int     `json:"recipient"`
+	Sender      int     `json:"sender"`
 }
 
 // TransferCommandResponse defines model for TransferCommandResponse.

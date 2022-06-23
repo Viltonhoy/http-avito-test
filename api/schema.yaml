@@ -127,36 +127,34 @@ components:
       required: true
 
   schemas:
-    OrdBy:
-      type: string
-      enum:
-        - amount
-        - date
 
     ReadUserRequest:
       type: object
       properties:
-        userid:
+        user_id:
           type: integer
         currency: 
           type: string
       required:
-        - userid
+        - user_id
         - currency
 
     ReadUserHistoryRequest:
       type: object
       properties:
-        userid: 
+        user_id: 
           type: integer
         order: 
-          $ref: '#/components/schemas/OrdBy'
+          x-go-type: storage.OrdBy
+          x-go-type-import: 
+            name: OrdBy
+            path: http-avito-test/internal/storage
         limit: 
           type: integer
         offset: 
           type: integer 
       required:	
-        - userid
+        - user_id
         - order
         - limit
         - offset
@@ -164,18 +162,18 @@ components:
     AccountDepositRequest:
       type: object
       properties:
-        userid: 
+        user_id: 
           type: integer
         amount: 
           type: number
       required: 
-        - userid
+        - user_id
         - amount    
 
     AccountWithdrawalRequest:
       type: object
       properties:
-        userid: 
+        user_id: 
           type: integer
         amount: 
           type: number 
@@ -183,16 +181,16 @@ components:
           type: string
           nullable: true
       required: 
-        - userid
+        - user_id
         - amount
         - description	
 
     TransferCommandRequest:
       type: object
       properties:
-        userid1:
+        sender:
           type: integer
-        userid2: 
+        recipient: 
           type: integer
         amount:
           type: number
@@ -200,8 +198,8 @@ components:
           type: string
           nullable: true
       required:
-        - userid1
-        - userid2
+        - sender
+        - recipient
         - amount
         - description
 
@@ -213,7 +211,7 @@ components:
         result:
           type: object
           properties:
-            userid:
+            user_id:
               type: integer
             balance:
               x-go-type: decimal.Decimal
@@ -221,7 +219,7 @@ components:
                 name: decimal
                 path: github.com/shopspring/decimal
           required:
-            - userid
+            - user_id
             - balance       
       required: 
         - status
