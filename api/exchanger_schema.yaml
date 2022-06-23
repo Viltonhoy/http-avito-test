@@ -1,0 +1,45 @@
+openapi: 3.0.0
+info: 
+  version: 1.0.0
+  title: exchanger API
+  description: yaml file for description the response data
+
+paths:
+  /exchangerates_data/convert:
+
+    get:
+      summary: Exchanger Result
+      operationId: ExchangerResult
+              
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangerResult'         
+
+components:
+
+  schemas:
+    CodeAndMessage: 
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message 
+
+    ExchangerResult:
+      type: object
+      properties:
+        result: 
+          type: number
+        err: 
+          $ref: '#/components/schemas/CodeAndMessage' 
+      required:
+        - result
+        - error 
