@@ -4,69 +4,60 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"http-avito-test/internal/generated"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/caarlos0/env/v6"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
+const envApiKey = "API_KEY"
+
 type ExchangerClient struct {
+	apiKey string
 	Client *http.Client
-}
-
-func New() *ExchangerClient {
-	return &ExchangerClient{Client: &http.Client{
-		Timeout: 5 * time.Second}}
-}
-
-type ExchangeResult struct {
-	Result float32         `json:"result"`
-	Err    *codeAndMessage `json:"error"`
-}
-
-type codeAndMessage struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type ExchangerConfig struct {
-	Key string `env:"API_KEY"`
 }
 
 const ErrorExchangerMessage = "You have entered an invalid \"to\" property. [Example: to=GBP]"
 
 var ErrExchanger = errors.New(ErrorExchangerMessage)
 
+func New() *ExchangerClient {
+	return &ExchangerClient{
+		apiKey: os.Getenv(envApiKey),
+		Client: &http.Client{
+			Timeout: 5 * time.Second},
+	}
+}
+
 func (e *ExchangerClient) ExchangeRates(logger *zap.Logger, value decimal.Decimal, currency string) (decimal.Decimal, error) {
 	logger.Debug("starting exchanger rates")
 
-	logger.Sync()
-
-	var ex *ExchangeResult
-
-	cfg := ExchangerConfig{}
-	if err := env.Parse(&cfg); err != nil {
-		logger.Error("parse error", zap.Error(err))
-		return decimal.NewFromInt(0), err
-	}
+	var ex *generated.ExchangerResult
 
 	url := fmt.Sprintf(`https://api.apilayer.com/exchangerates_data/convert?to=%s&from=RUB&amount=%s`, currency, value)
 
 	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Set("apikey", cfg.Key)
+	req.Header.Set("apikey", e.apiKey)
 
 	if err != nil {
 		logger.Error("bad request error", zap.Error(err))
 		return decimal.NewFromInt(0), err
 	}
-	res, _ := e.Client.Do(req)
+	res, err := e.Client.Do(req)
+	if err != nil {
+		return decimal.NewFromInt(0), err
+	}
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
-	body, _ := ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return decimal.NewFromInt(0), err
+	}
 	err = json.Unmarshal(body, &ex)
 	if err != nil {
 		return decimal.NewFromInt(0), err
