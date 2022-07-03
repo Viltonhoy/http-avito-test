@@ -62,8 +62,8 @@ func (e *ExchangerClient) ExchangeRates(logger *zap.Logger, value decimal.Decima
 	if err != nil {
 		return decimal.NewFromInt(0), err
 	}
-	if ex.Err != nil {
-		logger.Error(ex.Err.Code, zap.Error(ErrExchanger))
+	if ex.Error != nil {
+		logger.Error(ex.Error.Code, zap.Error(ErrExchanger))
 		return decimal.NewFromInt(0), ErrExchanger
 	}
 	return decimal.NewFromFloat32(ex.Result), nil
