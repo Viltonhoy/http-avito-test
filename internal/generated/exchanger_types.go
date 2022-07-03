@@ -11,6 +11,6 @@ type CodeAndMessage struct {
 
 // ExchangerResult defines model for ExchangerResult.
 type ExchangerResult struct {
-	Err    *CodeAndMessage `json:"err,omitempty"`
-	Result float32         `json:"result"`
+	Error  *CodeAndMessage `json:"error"`
+	Result float32        `json:"result"`
 }
