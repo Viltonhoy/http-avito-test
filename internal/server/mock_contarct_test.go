@@ -11,6 +11,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	decimal "github.com/shopspring/decimal"
+	zap "go.uber.org/zap"
 )
 
 // MockStorager is a mock of Storager interface.
@@ -50,23 +51,23 @@ func (mr *MockStoragerMockRecorder) Deposit(arg0, arg1, arg2 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deposit", reflect.TypeOf((*MockStorager)(nil).Deposit), arg0, arg1, arg2)
 }
 
-// ReadUser mocks base method.
-func (m *MockStorager) ReadUser(arg0 context.Context, arg1 int64) (storage.UserBalance, error) {
+// ReadUserByID mocks base method.
+func (m *MockStorager) ReadUserByID(arg0 context.Context, arg1 int64) (storage.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadUser", arg0, arg1)
-	ret0, _ := ret[0].(storage.UserBalance)
+	ret := m.ctrl.Call(m, "ReadUserByID", arg0, arg1)
+	ret0, _ := ret[0].(storage.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ReadUser indicates an expected call of ReadUser.
-func (mr *MockStoragerMockRecorder) ReadUser(arg0, arg1 interface{}) *gomock.Call {
+// ReadUserByID indicates an expected call of ReadUserByID.
+func (mr *MockStoragerMockRecorder) ReadUserByID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUser", reflect.TypeOf((*MockStorager)(nil).ReadUser), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUserByID", reflect.TypeOf((*MockStorager)(nil).ReadUserByID), arg0, arg1)
 }
 
 // ReadUserHistoryList mocks base method.
-func (m *MockStorager) ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]storage.ReadUserHistoryResult, error) {
+func (m *MockStorager) ReadUserHistoryList(ctx context.Context, user_id int64, order storage.OrdBy, limit, offset int64) ([]storage.ReadUserHistoryResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadUserHistoryList", ctx, user_id, order, limit, offset)
 	ret0, _ := ret[0].([]storage.ReadUserHistoryResult)
@@ -106,4 +107,42 @@ func (m *MockStorager) Withdrawal(arg0 context.Context, arg1 int64, arg2 decimal
 func (mr *MockStoragerMockRecorder) Withdrawal(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Withdrawal", reflect.TypeOf((*MockStorager)(nil).Withdrawal), arg0, arg1, arg2, arg3)
+}
+
+// MockExchanger is a mock of Exchanger interface.
+type MockExchanger struct {
+	ctrl     *gomock.Controller
+	recorder *MockExchangerMockRecorder
+}
+
+// MockExchangerMockRecorder is the mock recorder for MockExchanger.
+type MockExchangerMockRecorder struct {
+	mock *MockExchanger
+}
+
+// NewMockExchanger creates a new mock instance.
+func NewMockExchanger(ctrl *gomock.Controller) *MockExchanger {
+	mock := &MockExchanger{ctrl: ctrl}
+	mock.recorder = &MockExchangerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockExchanger) EXPECT() *MockExchangerMockRecorder {
+	return m.recorder
+}
+
+// ExchangeRates mocks base method.
+func (m *MockExchanger) ExchangeRates(logger *zap.Logger, value decimal.Decimal, currency string) (decimal.Decimal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExchangeRates", logger, value, currency)
+	ret0, _ := ret[0].(decimal.Decimal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExchangeRates indicates an expected call of ExchangeRates.
+func (mr *MockExchangerMockRecorder) ExchangeRates(logger, value, currency interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeRates", reflect.TypeOf((*MockExchanger)(nil).ExchangeRates), logger, value, currency)
 }
