@@ -23,28 +23,22 @@ func TestReadUserHostory(t *testing.T) {
 		var testHistoryList = generated.ReadUserHistoryResponse{
 			Result: []storage.ReadUserHistoryResult{
 				{
-					AccountID:   1,
-					CBjournal:   "deposit",
-					Amount:      decimal.NewFromInt(100),
-					Date:        time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
-					Addressee:   nil,
-					Description: nil,
+					AccountID: 1,
+					CashBook:  "deposit",
+					Amount:    decimal.NewFromInt(100),
+					Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
 				},
 				{
-					AccountID:   1,
-					CBjournal:   "deposit",
-					Amount:      decimal.NewFromInt(120),
-					Date:        time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
-					Addressee:   nil,
-					Description: nil,
+					AccountID: 1,
+					CashBook:  "deposit",
+					Amount:    decimal.NewFromInt(120),
+					Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
 				},
 				{
-					AccountID:   1,
-					CBjournal:   "deposit",
-					Amount:      decimal.NewFromInt(130),
-					Date:        time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
-					Addressee:   nil,
-					Description: nil,
+					AccountID: 1,
+					CashBook:  "deposit",
+					Amount:    decimal.NewFromInt(130),
+					Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
 				},
 			},
 			Status: "ok",
@@ -54,36 +48,30 @@ func TestReadUserHostory(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), "amount", int64(100), int64(0)).Return([]storage.ReadUserHistoryResult{
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), storage.OrderByAmount, int64(100), int64(0)).Return([]storage.ReadUserHistoryResult{
 			{
-				AccountID:   1,
-				CBjournal:   "deposit",
-				Amount:      decimal.NewFromInt(100),
-				Date:        time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
-				Addressee:   nil,
-				Description: nil,
+				AccountID: 1,
+				CashBook:  "deposit",
+				Amount:    decimal.NewFromInt(100),
+				Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
 			},
 			{
-				AccountID:   1,
-				CBjournal:   "deposit",
-				Amount:      decimal.NewFromInt(120),
-				Date:        time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
-				Addressee:   nil,
-				Description: nil,
+				AccountID: 1,
+				CashBook:  "deposit",
+				Amount:    decimal.NewFromInt(120),
+				Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
 			},
 			{
-				AccountID:   1,
-				CBjournal:   "deposit",
-				Amount:      decimal.NewFromInt(130),
-				Date:        time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
-				Addressee:   nil,
-				Description: nil,
+				AccountID: 1,
+				CashBook:  "deposit",
+				Amount:    decimal.NewFromInt(130),
+				Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
 			},
 		},
 			nil,
 		)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Order": "amount", "Limit":100, "Offset":0}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "amount", "Limit":100, "Offset":0}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 		w := httptest.NewRecorder()
@@ -105,34 +93,59 @@ func TestReadUserHostory(t *testing.T) {
 
 	})
 
-	t.Run("empty request body", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		ctrl.Finish()
+	t.Run("unmarshal errors", func(t *testing.T) {
+		t.Run("malformed request body", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		m := NewMockStorager(ctrl)
+			m := NewMockStorager(ctrl)
 
-		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", nil)
-		w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", nil)
+			w := httptest.NewRecorder()
 
-		s := Handler{
-			Store: m,
-		}
+			s := Handler{
+				Store: m,
+			}
 
-		s.ReadUserHistory(w, req)
+			s.ReadUserHistory(w, req)
 
-		body, err := ioutil.ReadAll(w.Body)
-		assert.NoError(t, err)
+			body, err := ioutil.ReadAll(w.Body)
+			assert.NoError(t, err)
 
-		assert.Equal(t, "malformed request body\n", string(body))
+			assert.Equal(t, "malformed request body\n", string(body))
+		})
+
+		t.Run("wrong value of ordBy type", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			m := NewMockStorager(ctrl)
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "account_id", "Limit":100, "Offset":0}`))
+
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store: m,
+			}
+
+			s.ReadUserHistory(w, req)
+
+			body, err := ioutil.ReadAll(w.Body)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "wrong value of \"ordBy\" type\n", string(body))
+		})
 	})
 
 	t.Run("wrong UserID value", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		ctrl.Finish()
+		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":0, "Order": "amount", "Limit":100, "Offset":0}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":0, "Order": "amount", "Limit":100, "Offset":0}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 		w := httptest.NewRecorder()
@@ -149,7 +162,7 @@ func TestReadUserHostory(t *testing.T) {
 		assert.Equal(t, "wrong value of \"User_id\"\n", string(body))
 	})
 
-	t.Run("green case", func(t *testing.T) {
+	t.Run("reading user error", func(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -157,9 +170,9 @@ func TestReadUserHostory(t *testing.T) {
 		err := errors.New("can not read user history")
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), "amount", int64(100), int64(0)).Return(nil, err)
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), storage.OrderByAmount, int64(100), int64(0)).Return(nil, err)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Order": "amount", "Limit":100, "Offset":0}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "amount", "Limit":100, "Offset":0}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 		w := httptest.NewRecorder()
@@ -174,9 +187,36 @@ func TestReadUserHostory(t *testing.T) {
 		body, err := ioutil.ReadAll(resp.Body)
 		assert.NoError(t, err)
 
-		result := "can not read user history\n"
+		result := "error reading user history\n"
 
 		assert.Equal(t, result, string(body))
 
+	})
+
+	t.Run("user does not exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(100000000), storage.OrderByAmount, int64(100), int64(0)).Return(nil, nil)
+
+		arg := bytes.NewBuffer([]byte(`{"User_id":100000000, "Order": "amount", "Limit":100, "Offset":0}`))
+
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.ReadUserHistory(w, req)
+
+		resp := w.Result()
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
+
+		result := "user does not exist\n"
+
+		assert.Equal(t, result, string(body))
 	})
 }

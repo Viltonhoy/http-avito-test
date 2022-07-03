@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
+	"http-avito-test/internal/exchanger"
 	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
@@ -12,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestReadUser(t *testing.T) {
@@ -21,12 +24,12 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		m.EXPECT().ReadUser(context.Background(), int64(1)).Return(storage.UserBalance{
+		m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(storage.User{
 			AccountID: 1,
 			Balance:   decimal.NewFromInt(10000),
 		}, nil)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Currency":"RUB"}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUB"}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
@@ -35,7 +38,7 @@ func TestReadUser(t *testing.T) {
 		}
 
 		s.ReadUser(w, req)
-		resptest := `{"result":{"userID":1,"balance":"100"},"status":"ok"}`
+		resptest := "{\"result\":{\"balance\":\"100\",\"user_id\":1},\"status\":\"ok\"}"
 		resp := w.Result()
 		body, _ := ioutil.ReadAll(resp.Body)
 
@@ -89,7 +92,7 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Currency":""}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":""}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
@@ -105,31 +108,137 @@ func TestReadUser(t *testing.T) {
 		assert.Equal(t, resptest, string(body))
 	})
 
-	// t.Run("user does not exist", func(t *testing.T) {
-	// 	ctrl := gomock.NewController(t)
-	// 	defer ctrl.Finish()
+	t.Run("user does not exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-	// 	err := errors.New("user does not exist\n")
+		m := NewMockStorager(ctrl)
+		m.EXPECT().ReadUserByID(context.Background(), int64(1000000)).Return(
+			storage.User{},
+			storage.ErrUserAvailability)
 
-	// 	m := NewMockStorager(ctrl)
-	// 	m.EXPECT().ReadUser(context.Background(), int64(1000000)).Return(storage.UserBalance{}, err)
+		arg := bytes.NewBuffer([]byte(`{"User_id":1000000, "Currency":"RUB"}`))
+		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
+		w := httptest.NewRecorder()
 
-	// 	arg := bytes.NewBuffer([]byte(`{"UserID":1000000, "Currency":"RUB"}`))
-	// 	req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
-	// 	w := httptest.NewRecorder()
+		s := Handler{
+			Store: m,
+		}
 
-	// 	s := Handler{
-	// 		Store: m,
-	// 	}
+		s.ReadUser(w, req)
 
-	// 	s.ReadUser(w, req)
+		resp := w.Result()
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
 
-	// 	resp := w.Result()
-	// 	body, err := ioutil.ReadAll(resp.Body)
-	// 	assert.NoError(t, err)
+		resptest := "user does not exist\n"
+		assert.Equal(t, resptest, string(body))
+	})
 
-	// 	resptest := `user does not exist`
-	// 	assert.Equal(t, resptest, string(body))
-	// })
+	t.Run("cannot read user with specified id", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
+		m := NewMockStorager(ctrl)
+		m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+			storage.User{},
+			errors.New("cannot read user with specified id"))
+
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUB"}`))
+		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.ReadUser(w, req)
+
+		resp := w.Result()
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
+
+		resptest := "cannot read user with specified id\n"
+		assert.Equal(t, resptest, string(body))
+	})
+
+	t.Run("exchanger errors", func(t *testing.T) {
+		t.Run("incorrect currency code value", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var logger *zap.Logger
+
+			newStorage := storage.User{
+				AccountID: 1,
+				Balance:   decimal.NewFromInt(10000),
+			}
+
+			m := NewMockStorager(ctrl)
+			m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+				newStorage,
+				nil)
+
+			e := NewMockExchanger(ctrl)
+			e.EXPECT().ExchangeRates(logger, decimal.New(newStorage.Balance.IntPart(), int32(-2)), "RUBBB").Return(decimal.NewFromInt(0),
+				exchanger.ErrExchanger)
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUBBB"}`))
+			req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store:     m,
+				Exchanger: e,
+			}
+
+			s.ReadUser(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			resptest := "incorrect currency code value\n"
+			assert.Equal(t, resptest, string(body))
+		})
+
+		t.Run("cannot convert the value to the specified currency", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var logger *zap.Logger
+
+			newStorage := storage.User{
+				AccountID: 1,
+				Balance:   decimal.NewFromInt(10000),
+			}
+
+			m := NewMockStorager(ctrl)
+			m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+				newStorage,
+				nil)
+
+			e := NewMockExchanger(ctrl)
+			e.EXPECT().ExchangeRates(logger, decimal.New(newStorage.Balance.IntPart(), int32(-2)), "EUR").Return(decimal.NewFromInt(0),
+				errors.New(""))
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"EUR"}`))
+			req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store:     m,
+				Exchanger: e,
+			}
+
+			s.ReadUser(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			resptest := "cannot convert the value to the specified currency\n"
+			assert.Equal(t, resptest, string(body))
+		})
+	})
 }

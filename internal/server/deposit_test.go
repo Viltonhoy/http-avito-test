@@ -32,7 +32,7 @@ func TestAccountDeposit(t *testing.T) {
 		m := NewMockStorager(ctrl)
 		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(nil)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Amount":100.00}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 		w := httptest.NewRecorder()
 
@@ -43,7 +43,8 @@ func TestAccountDeposit(t *testing.T) {
 		s.AccountDeposit(w, req)
 
 		resp := w.Result()
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
 
 		js, err := json.Marshal(testDeposit)
 		assert.NoError(t, err)
@@ -53,7 +54,7 @@ func TestAccountDeposit(t *testing.T) {
 
 	t.Run("empty request body", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		ctrl.Finish()
+		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
 
@@ -64,7 +65,7 @@ func TestAccountDeposit(t *testing.T) {
 			Store: m,
 		}
 
-		s.ReadUserHistory(w, req)
+		s.AccountDeposit(w, req)
 
 		body, err := ioutil.ReadAll(w.Body)
 		assert.NoError(t, err)
@@ -74,11 +75,11 @@ func TestAccountDeposit(t *testing.T) {
 
 	t.Run("wrong UserID value", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		ctrl.Finish()
+		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":0, "Amount":100.00}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":0, "Amount":100.00}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 		w := httptest.NewRecorder()
@@ -87,7 +88,7 @@ func TestAccountDeposit(t *testing.T) {
 			Store: m,
 		}
 
-		s.ReadUserHistory(w, req)
+		s.AccountDeposit(w, req)
 
 		body, err := ioutil.ReadAll(w.Body)
 		assert.NoError(t, err)
@@ -95,17 +96,68 @@ func TestAccountDeposit(t *testing.T) {
 		assert.Equal(t, "wrong value of \"User_id\"\n", string(body))
 	})
 
-	t.Run("error updating balance", func(t *testing.T) {
+	t.Run("wrong amount value", func(t *testing.T) {
+		t.Run("amount exponent greater than 2", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
+			m := NewMockStorager(ctrl)
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.345}`))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store: m,
+			}
+
+			s.AccountDeposit(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			result := "wrong value of \"Amount\"\n"
+
+			assert.Equal(t, result, string(body))
+		})
+
+		t.Run("amount less than or equal to zero", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			m := NewMockStorager(ctrl)
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":0}`))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store: m,
+			}
+
+			s.AccountDeposit(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			result := "wrong value of \"Amount\"\n"
+
+			assert.Equal(t, result, string(body))
+		})
+	})
+
+	t.Run("error updating balance", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		err := errors.New("Error updating balance")
+		err := errors.New("error updating balance")
 
 		m := NewMockStorager(ctrl)
 		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(err)
 
-		arg := bytes.NewBuffer([]byte(`{"UserID":1, "Amount":100.00}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 		w := httptest.NewRecorder()
 
@@ -116,11 +168,11 @@ func TestAccountDeposit(t *testing.T) {
 		s.AccountDeposit(w, req)
 
 		resp := w.Result()
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
 
-		result := "Error updating balance\n"
+		result := "error updating balance\n"
 
 		assert.Equal(t, result, string(body))
 	})
-
 }
