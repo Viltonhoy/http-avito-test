@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"http-avito-test/internal/storage"
 	"math/rand"
 	"time"
@@ -10,10 +9,11 @@ import (
 type Posting struct {
 	AccountID        int64
 	CBjournal        storage.OperationType
-	AccountingPeriod string
+	AccountingPeriod time.Time
 	Amount           int64
 	Date             time.Time
 	Addressee        *int64
+	Description      *string
 }
 
 const cacheBookAccountID = int64(0)
@@ -27,7 +27,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	// Generating first values ​​for each user id with big amount values for
 	//
 	for i := 1; i <= userCount; i++ {
-		year := fmt.Sprintf(`Period: %d`, time.Now().Year())
+		year := time.Now()
 		amountValue := rand.Int63n(10000000) * 100
 
 		postingTable = append(
@@ -58,7 +58,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	for i <= n {
 
 		i++
-		year := fmt.Sprintf(`Period: %d`, time.Now().Year())
+		year := time.Now()
 
 		switch casheBookOperation[rand.Intn(len(casheBookOperation))] {
 		case string(storage.OperationTypeDeposit):
@@ -160,4 +160,5 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 		}
 	}
 	return postingTable
+
 }
