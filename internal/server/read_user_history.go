@@ -4,39 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"http-avito-test/internal/generated"
+	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
 
 	"go.uber.org/zap"
 )
-
-type ordBy string
-
-const (
-	orderByAmount ordBy = "amount"
-	orderByDate   ordBy = "date"
-)
-
-var errBadOrderType = errors.New("wrong value of ordBy type")
-
-func (j *ordBy) UnmarshalJSON(v []byte) error {
-	var s string
-
-	if err := json.Unmarshal(v, &s); err != nil {
-		return err
-	}
-
-	switch s {
-	case string(orderByAmount):
-		*j = orderByAmount
-	case string(orderByDate):
-		*j = orderByDate
-	default:
-		return errBadOrderType
-	}
-
-	return nil
-}
 
 func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 	var hand *generated.ReadUserHistoryRequest
@@ -46,34 +19,33 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
 
-		if errors.Is(err, errBadOrderType) {
-			http.Error(w, "wrong value of ordBy type", http.StatusBadRequest)
+		if errors.Is(err, storage.ErrBadOrderType) {
+			http.Error(w, "wrong value of \"ordBy\" type", http.StatusBadRequest)
 			return
 		} else {
 			http.Error(w, "malformed request body", http.StatusBadRequest)
 			return
 		}
-
 	}
 
-	if hand.Userid <= 0 {
-		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
+	if hand.UserId <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
-	hist, err := h.Store.ReadUserHistoryList(r.Context(), int64(hand.Userid), string(hand.Order), int64(hand.Limit), int64(hand.Offset))
+	user, err := h.Store.ReadUserHistoryList(r.Context(), int64(hand.UserId), hand.Order, int64(hand.Limit), int64(hand.Offset))
 	if err != nil {
-		http.Error(w, "can not read user history", http.StatusInternalServerError)
+		http.Error(w, "error reading user history", http.StatusInternalServerError)
 		return
 	}
 
-	if hist == nil {
+	if user == nil {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
 		return
 	}
 
 	result := generated.ReadUserHistoryResponse{
-		Result: hist,
+		Result: user,
 		Status: "ok",
 	}
 
