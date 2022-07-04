@@ -1,0 +1,91 @@
+--the first data generator in the posting table by sql query
+
+--this option turned out to be unsuccessful because it returnes a successful addition as a response
+--but was not
+create function deposit() returns void as $$
+declare
+amt bigint := random()*(1000000-10000+1)+10000;
+acc_id bigint := random()*(10-1+1)+1;
+begin
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select acc_id, 'deposit', '2022', amt, '2022-05-14', '';
+
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select 0, 'deposit', '2022', -1 * amt, '2022-05-14', '';
+end;
+$$ language plpgsql;
+
+
+create function withdrawal() returns void as $$
+declare
+amt bigint := random()*(1000000-10000+1)+10000;
+acc_id bigint := random()*(10-1+1)+1;
+balance account_balances.balance%TYPE;
+begin
+REFRESH MATERIALIZED VIEW account_balances;
+SELECT account_balances.balance FROM account_balances WHERE user_id = acc_id into balance;
+
+if balance >= amt then
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select acc_id, 'withdrawal', '2022', -1 * amt, '2022-05-14', '';
+
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select 0, 'withdrawal', '2022', amt, '2022-05-14', '';
+end if;
+
+end;
+$$ language plpgsql;
+
+
+create function transfer() returns void as $$
+declare
+amt bigint := random()*(1000000-10000+1)+10000;
+facc_id bigint := random()*(10-1+1)+1;
+sacc_id bigint := random()*(10-1+1)+1;
+balance bigint;
+begin
+
+REFRESH MATERIALIZED VIEW account_balances;
+SELECT account_balances.balance FROM account_balances WHERE user_id = facc_id into balance;
+
+if balance >= amt then
+
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select facc_id, 'transfer', '2022', -1 * amt, '2022-05-14', cast (sacc_id as text);
+
+insert into posting (account_id, cb_journal, accounting_period, amount, date, addressee)
+select sacc_id, 'transfer', '2022', amt, '2022-05-14', cast (facc_id as text);
+end if;
+
+end;
+
+do $$
+begin
+for i in 1..20000 loop
+perform deposit();
+perform withdrawal();
+perform transfer();
+end loop;
+end;
+$$ language plpgsql
+
+
+
+--the materialized view had to be abandoned because it is less efficient
+--in terms of performance and the number of requests
+
+create materialized view account_balances(
+user_id, balance	
+) as select
+	account_id,
+	sum(amount) 
+from posting 
+group by account_id
+with no data;
+
+create materialized view history_table(
+account_id, cb_journal, amount, date, addressee, description
+) as select
+	account_id, cb_journal, amount, date, addressee, description 
+from posting 
+with no data;
