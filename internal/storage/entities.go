@@ -1,23 +1,24 @@
 package storage
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
 
-type UserBalance struct {
+type User struct {
 	AccountID int64           `json:"userID"`
 	Balance   decimal.Decimal `json:"balance"`
 }
 
 type ReadUserHistoryResult struct {
 	AccountID   int64           `json:"userID"`
-	CBjournal   OperationType   `json:"cbJournal"`
+	CashBook    OperationType   `json:"cashebook"`
 	Amount      decimal.Decimal `json:"amount"`
 	Date        time.Time       `json:"date"`
-	Addressee   *int64          `json:"addressee"`
-	Description *string         `json:"description"`
+	Addressee   sql.NullInt64   `json:"addressee"`
+	Description sql.NullString  `json:"description"`
 }
 
 type OperationType string
@@ -26,4 +27,11 @@ const (
 	OperationTypeDeposit    OperationType = "deposit"
 	OperationTypeWithdrawal OperationType = "withdrawal"
 	OperationTypeTransfer   OperationType = "transfer"
+)
+
+type OrdBy string
+
+const (
+	OrderByAmount OrdBy = "amount"
+	OrderByDate   OrdBy = "date"
 )
