@@ -9,11 +9,11 @@ import (
 )
 
 type Storager interface {
-	ReadUser(context.Context, int64) (storage.UserBalance, error)
+	ReadUserByID(context.Context, int64) (storage.User, error)
 	Deposit(context.Context, int64, decimal.Decimal) error
 	Withdrawal(context.Context, int64, decimal.Decimal, *string) error
 	Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description *string) error
-	ReadUserHistoryList(ctx context.Context, user_id int64, order string, limit, offset int64) ([]storage.ReadUserHistoryResult, error)
+	ReadUserHistoryList(ctx context.Context, user_id int64, order storage.OrdBy, limit, offset int64) ([]storage.ReadUserHistoryResult, error)
 }
 
 type Exchanger interface {
