@@ -2,7 +2,9 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"http-avito-test/internal/generated"
+	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
 
@@ -16,12 +18,12 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
-		http.Error(w, "Empty request body", http.StatusBadRequest)
+		http.Error(w, "malformed request body", http.StatusBadRequest)
 		return
 	}
 
-	if hand.Userid <= 0 {
-		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
+	if hand.UserId <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
@@ -29,10 +31,10 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case newBalance.Exponent() < -2:
-		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		http.Error(w, "wrong value of \"Amount\"", http.StatusBadRequest)
 		return
 	case newBalance.LessThanOrEqual(decimal.NewFromInt(int64(0))):
-		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		http.Error(w, "wrong value of \"Amount\"", http.StatusBadRequest)
 		return
 	}
 
@@ -40,9 +42,17 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		hand.Description = nil
 	}
 
-	err = h.Store.Withdrawal(r.Context(), int64(hand.Userid), newBalance, hand.Description)
-	if err != nil {
-		http.Error(w, "Error updating balance", http.StatusInternalServerError)
+	newErr := h.Store.Withdrawal(r.Context(), int64(hand.UserId), newBalance, hand.Description)
+	if newErr != nil {
+		if errors.Is(newErr, storage.ErrWithdrawal) {
+			http.Error(w, "not enough money in the account", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(newErr, storage.ErrUserAvailability) {
+			http.Error(w, "user does not exist", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "error updating balance", http.StatusInternalServerError)
 		return
 	}
 

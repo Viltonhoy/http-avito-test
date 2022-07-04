@@ -5,10 +5,10 @@ import (
 	"errors"
 	"http-avito-test/internal/exchanger"
 	"http-avito-test/internal/generated"
+	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
@@ -29,8 +29,8 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.Userid <= 0 {
-		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
+	if hand.UserId <= 0 {
+		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
 
@@ -39,9 +39,9 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Store.ReadUser(r.Context(), int64(hand.Userid))
+	user, err := h.Store.ReadUserByID(r.Context(), int64(hand.UserId))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, storage.ErrUserAvailability) {
 			http.Error(w, "user does not exist", http.StatusBadRequest)
 			return
 		}
@@ -72,10 +72,10 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	result := generated.ReadUserResponse{
 		Result: struct {
 			Balance decimal.Decimal "json:\"balance\""
-			Userid  int             "json:\"userid\""
+			UserId  int             "json:\"user_id\""
 		}{
 			Balance: newval,
-			Userid:  int(user.AccountID),
+			UserId:  int(user.AccountID),
 		},
 		Status: "ok",
 	}

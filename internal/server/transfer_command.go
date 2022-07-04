@@ -2,7 +2,9 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"http-avito-test/internal/generated"
+	"http-avito-test/internal/storage"
 	"io/ioutil"
 	"net/http"
 
@@ -16,12 +18,16 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &hand)
 	if err != nil {
-		http.Error(w, "Empty request body", http.StatusBadRequest)
+		http.Error(w, "malformed request body", http.StatusBadRequest)
 		return
 	}
 
-	if hand.Userid1 <= 0 && hand.Userid2 <= 0 {
-		http.Error(w, "wrong value of \"Userid\"", http.StatusBadRequest)
+	switch {
+	case hand.Sender <= 0:
+		http.Error(w, "wrong value of \"Sender\"", http.StatusBadRequest)
+		return
+	case hand.Recipient <= 0:
+		http.Error(w, "wrong value of \"Recipient\"", http.StatusBadRequest)
 		return
 	}
 
@@ -29,10 +35,10 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case newBalance.Exponent() < -2:
-		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		http.Error(w, "wrong value of \"Amount\"", http.StatusBadRequest)
 		return
 	case newBalance.LessThanOrEqual(decimal.NewFromInt(int64(0))):
-		http.Error(w, "wrong value of amount", http.StatusBadRequest)
+		http.Error(w, "wrong value of \"Amount\"", http.StatusBadRequest)
 		return
 	}
 
@@ -40,9 +46,17 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		hand.Description = nil
 	}
 
-	err = h.Store.Transfer(r.Context(), int64(hand.Userid1), int64(hand.Userid2), newBalance, hand.Description)
+	err = h.Store.Transfer(r.Context(), int64(hand.Sender), int64(hand.Recipient), newBalance, hand.Description)
 	if err != nil {
-		http.Error(w, "Error updating balance", http.StatusInternalServerError)
+		if errors.Is(err, storage.ErrTransfer) {
+			http.Error(w, "not enough money in the account", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, storage.ErrUserAvailability) {
+			http.Error(w, "sender does not exist", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "error updating balance", http.StatusInternalServerError)
 		return
 	}
 
