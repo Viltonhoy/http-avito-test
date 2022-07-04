@@ -1,6 +1,6 @@
 version: '3.7'
 
-# reading connection values from .env file using volumes field instead of  environment
+# reading connection values from .env file using volumes field instead of environment
 services:
   app:
     image: service-app
@@ -25,6 +25,6 @@ services:
       POSTGRES_PASSWORD: "root"
       POSTGRES_DB: "postgres"
     ports:
-      - "5432:5432"  
+      - "5432:15432"  
     volumes:
-      - "../scripts/postgres:/docker-entrypoint-initdb.d/"          
+      - "../scripts/postgres/schema/schema.sql:/docker-entrypoint-initdb.d/"          
