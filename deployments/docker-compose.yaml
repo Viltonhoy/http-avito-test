@@ -25,6 +25,6 @@ services:
       POSTGRES_PASSWORD: "root"
       POSTGRES_DB: "postgres"
     ports:
-      - "5432:15432"  
+      - "5432:5432"  
     volumes:
-      - "../scripts/postgres/schema/schema.sql:/docker-entrypoint-initdb.d/"          
+      - "../scripts/postgres/schema/:/docker-entrypoint-initdb.d/"          

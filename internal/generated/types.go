@@ -49,7 +49,7 @@ type ReadUserHistoryResponse struct {
 
 // ReadUserRequest defines model for ReadUserRequest.
 type ReadUserRequest struct {
-	Currency string `json:"currency"`
+	Currency *string `json:"currency"`
 	UserId   int    `json:"user_id"`
 }
 
