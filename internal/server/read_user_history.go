@@ -33,14 +33,23 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hand.Order == "" {
+		http.Error(w, "wrong value of \"ordBy\" type", http.StatusBadRequest)
+		return
+	}
+
 	user, err := h.Store.ReadUserHistoryList(r.Context(), int64(hand.UserId), hand.Order, int64(hand.Limit), int64(hand.Offset))
 	if err != nil {
+		if errors.Is(err, storage.ErrNoUser) {
+			http.Error(w, "user does not exist", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "error reading user history", http.StatusInternalServerError)
 		return
 	}
 
 	if user == nil {
-		http.Error(w, "user does not exist", http.StatusBadRequest)
+		http.Error(w, "wrong \"Offset\" value", http.StatusBadRequest)
 		return
 	}
 

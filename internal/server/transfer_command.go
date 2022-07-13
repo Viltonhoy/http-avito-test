@@ -42,7 +42,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if *hand.Description == "" {
+	if hand.Description == nil || *hand.Description == "" {
 		hand.Description = nil
 	}
 

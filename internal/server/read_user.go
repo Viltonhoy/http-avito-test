@@ -34,9 +34,13 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.Currency == "" {
+	if *hand.Currency == "" {
 		http.Error(w, "incorrect currency code value", http.StatusBadRequest)
 		return
+	}
+
+	if hand.Currency == nil {
+		*hand.Currency = "RUB"
 	}
 
 	user, err := h.Store.ReadUserByID(r.Context(), int64(hand.UserId))
@@ -49,14 +53,15 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newval decimal.Decimal
+	var newBalance decimal.Decimal
 
-	nextval := decimal.New(user.Balance.IntPart(), int32(-2))
+	expBalance := decimal.New(user.Balance.IntPart(), int32(-2))
 
-	if hand.Currency == oldRubleCurrensyCode || hand.Currency == rubleCurrencyCode {
-		newval = nextval
+	if *hand.Currency == oldRubleCurrensyCode || *hand.Currency == rubleCurrencyCode {
+		newBalance = expBalance
 	} else {
-		exchval, err := h.Exchanger.ExchangeRates(h.Logger, nextval, hand.Currency)
+		var newCurrency = *hand.Currency
+		exchval, err := h.Exchanger.ExchangeRates(h.Logger, expBalance, newCurrency)
 		if err != nil {
 			if errors.Is(err, exchanger.ErrExchanger) {
 				http.Error(w, "incorrect currency code value", http.StatusBadRequest)
@@ -66,7 +71,7 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "cannot convert the value to the specified currency", http.StatusInternalServerError)
 			return
 		}
-		newval = exchval
+		newBalance = exchval
 	}
 
 	result := generated.ReadUserResponse{
@@ -74,7 +79,7 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 			Balance decimal.Decimal "json:\"balance\""
 			UserId  int             "json:\"user_id\""
 		}{
-			Balance: newval,
+			Balance: newBalance,
 			UserId:  int(user.AccountID),
 		},
 		Status: "ok",
