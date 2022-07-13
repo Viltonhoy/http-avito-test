@@ -135,6 +135,7 @@ components:
           type: integer
         currency: 
           type: string
+          nullable: true
       required:
         - user_id
         - currency

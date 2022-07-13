@@ -38,7 +38,7 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if *hand.Description == "" {
+	if hand.Description == nil || *hand.Description == "" {
 		hand.Description = nil
 	}
 

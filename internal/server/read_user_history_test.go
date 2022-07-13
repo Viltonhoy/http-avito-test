@@ -198,7 +198,7 @@ func TestReadUserHostory(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), int64(100000000), storage.OrderByAmount, int64(100), int64(0)).Return(nil, nil)
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(100000000), storage.OrderByAmount, int64(100), int64(0)).Return(nil, storage.ErrNoUser)
 
 		arg := bytes.NewBuffer([]byte(`{"User_id":100000000, "Order": "amount", "Limit":100, "Offset":0}`))
 
@@ -216,6 +216,33 @@ func TestReadUserHostory(t *testing.T) {
 		assert.NoError(t, err)
 
 		result := "user does not exist\n"
+
+		assert.Equal(t, result, string(body))
+	})
+
+	t.Run("wrong offset value", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		m := NewMockStorager(ctrl)
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(100000000), storage.OrderByAmount, int64(100), int64(0)).Return(nil, nil)
+
+		arg := bytes.NewBuffer([]byte(`{"User_id":100000000, "Order": "amount", "Limit":100, "Offset":0}`))
+
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
+		w := httptest.NewRecorder()
+
+		s := Handler{
+			Store: m,
+		}
+
+		s.ReadUserHistory(w, req)
+
+		resp := w.Result()
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
+
+		result := "wrong \"Offset\" value\n"
 
 		assert.Equal(t, result, string(body))
 	})

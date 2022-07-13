@@ -44,6 +44,7 @@ var ErrUserAvailability = errors.New("sender does not exist")
 var (
 	ErrWithdrawal = errors.New("not enough money to withdraw")
 	ErrTransfer   = errors.New("not enough money to transfer")
+	ErrNoUser     = errors.New("user does not exist")
 )
 
 // NewStore constructs Store instance with configured logger
@@ -337,6 +338,39 @@ func (s *Storage) ReadUserHistoryList(
 	logger := s.Logger.With(zap.Int64("user_ID", userID))
 	logger.Debug("reading the user history list", zap.String("order", string(order)), zap.Int64("limit", limit), zap.Int64("offset", offset))
 
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			if errRollback := tx.Rollback(ctx); errRollback != nil {
+				logger.Error("error rolls back the transaction")
+			}
+		}
+	}()
+
+	var userExist bool
+
+	selectUserExist := `select exists (select * from posting where account_id = $1)`
+
+	err = tx.QueryRow(
+		ctx,
+		selectUserExist,
+		userID,
+	).Scan(&userExist)
+
+	if err != nil {
+		logger.Error("QueryRow error", zap.Error(err))
+		return nil, err
+	}
+
+	if !userExist {
+		logger.Error("error returning user with specified id: user does not exist", zap.Error(ErrNoUser))
+		return nil, ErrNoUser
+	}
+
 	var sql string
 
 	amountQuery := `SELECT account_id, cb_journal, amount, date, addressee, description FROM posting 
@@ -352,7 +386,7 @@ func (s *Storage) ReadUserHistoryList(
 		sql = dateQuery
 	}
 
-	rows, err := s.DB.Query(
+	rows, err := tx.Query(
 		ctx,
 		sql,
 		userID,
@@ -361,7 +395,7 @@ func (s *Storage) ReadUserHistoryList(
 	)
 
 	if err != nil {
-		logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
+		logger.Error("Query error", zap.Error(err))
 		return nil, err
 	}
 
@@ -376,5 +410,6 @@ func (s *Storage) ReadUserHistoryList(
 		r.Amount = decimal.New(r.Amount.IntPart(), -2)
 		rr = append(rr, r)
 	}
+	err = tx.Commit(ctx)
 	return rr, nil
 }
