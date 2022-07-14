@@ -11,12 +11,11 @@ CREATE TABLE posting(
 	description text 
 );
 
-create materialized view account_balances(
+create view user_balances(
 user_id, balance	
 ) as select
 	account_id,
 	sum(amount) 
 from posting 
-group by account_id
-with no data;
+group by account_id;
 

@@ -85,16 +85,7 @@ func (s *Storage) ReadUserByID(ctx context.Context, userID int64) (u User, err e
 		}
 	}()
 
-	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
-
-	_, err = tx.Exec(ctx, refreshSql)
-	if err != nil {
-		tx.Rollback(ctx)
-		s.Logger.Error("error refreshing materialized view", zap.Error(err))
-		return User{}, err
-	}
-
-	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+	selectSql := `SELECT balance FROM user_balances WHERE user_id = $1;`
 
 	//query execution
 	err = tx.QueryRow(ctx, selectSql, userID).Scan(&u.Balance)
@@ -191,16 +182,7 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		}
 	}()
 
-	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
-
-	_, err = tx.Exec(ctx, refreshSql)
-	if err != nil {
-		tx.Rollback(ctx)
-		s.Logger.Error("error refresh materialized view", zap.Error(err))
-		return err
-	}
-
-	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+	selectSql := `SELECT balance FROM user_balances WHERE user_id = $1;`
 
 	var balance User
 	err = tx.QueryRow(ctx, selectSql, userID).Scan(&balance.Balance)
@@ -277,15 +259,7 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		}
 	}()
 
-	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
-
-	_, err = tx.Exec(ctx, refreshSql)
-	if err != nil {
-		s.Logger.Error("error refreshing materialized view", zap.Error(err))
-		return err
-	}
-
-	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+	selectSql := `SELECT balance FROM user_balances WHERE user_id = $1;`
 
 	var balance User
 	err = tx.QueryRow(ctx, selectSql, sender).Scan(&balance.Balance)
