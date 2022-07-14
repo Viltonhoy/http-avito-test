@@ -20,9 +20,3 @@ from posting
 group by account_id
 with no data;
 
-create materialized view history_table(
-account_id, cb_journal, amount, date, addressee, description
-) as select
-	account_id, cb_journal, amount, date, addressee, description 
-from posting 
-with no data;
