@@ -22,29 +22,12 @@ type Storage struct {
 
 const cacheBookAccountID = int64(0)
 
-const updateRollUpTable = `
-	with var1 as (
-	select id from posting where account_id = $1 order by id desc limit 1
-	), var2 as(
-	select coalesce(sum(amount),0) from posting where account_id = $1 and id > (select coalesce((select last_tx_id from balances where account_id = $1),0))
-	) insert into balances (
-	balance,
-	account_id,
-	last_tx_id
-	) values (
-	(select * from var2),
-	$1,
-	(select * from var1)
-	) on conflict (account_id) do update
-	set last_tx_id = (select * from var1),
-	balance = (select * from var2) + (select balance from balances where account_id = $1) returning balance`
-
-var ErrUserAvailability = errors.New("sender does not exist")
-
 var (
-	ErrWithdrawal = errors.New("not enough money to withdraw")
-	ErrTransfer   = errors.New("not enough money to transfer")
-	ErrNoUser     = errors.New("user does not exist")
+	ErrWithdrawal       = errors.New("not enough money to withdraw")
+	ErrTransfer         = errors.New("not enough money to transfer")
+	ErrNoUser           = errors.New("user does not exist")
+	ErrUserAvailability = errors.New("sender does not exist")
+	ErrReadUserNoUser   = errors.New("no rows in result set")
 )
 
 // NewStore constructs Store instance with configured logger
@@ -102,14 +85,24 @@ func (s *Storage) ReadUserByID(ctx context.Context, userID int64) (u User, err e
 		}
 	}()
 
-	//query execution
-	err = tx.QueryRow(ctx, updateRollUpTable, userID).Scan(&u.Balance)
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
-			logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
-			return User{}, ErrUserAvailability
-		}
+		tx.Rollback(ctx)
+		s.Logger.Error("error refreshing materialized view", zap.Error(err))
+		return User{}, err
+	}
+
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+
+	//query execution
+	err = tx.QueryRow(ctx, selectSql, userID).Scan(&u.Balance)
+	if u.Balance.IsZero() {
+		logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
+		return User{}, ErrUserAvailability
+	}
+	if err != nil {
 		logger.Error("error returning user balance with specified id", zap.Error(err))
 		return User{}, err
 	}
@@ -198,8 +191,19 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		}
 	}()
 
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, refreshSql)
+	if err != nil {
+		tx.Rollback(ctx)
+		s.Logger.Error("error refresh materialized view", zap.Error(err))
+		return err
+	}
+
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+
 	var balance User
-	err = tx.QueryRow(ctx, updateRollUpTable, userID).Scan(&balance.Balance)
+	err = tx.QueryRow(ctx, selectSql, userID).Scan(&balance.Balance)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
@@ -211,8 +215,9 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 	}
 
 	if amount.GreaterThan(balance.Balance) {
-		logger.Error("insufficient funds on the user's account", zap.Error(ErrWithdrawal))
-		return ErrWithdrawal
+		tx.Rollback(ctx)
+		s.Logger.Error("insufficient funds on the user's account")
+		return err
 	}
 
 	firstInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, description)
@@ -229,7 +234,7 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		description,
 	)
 	if err != nil {
-		logger.Error("failed to insert record", zap.Error(err))
+		s.Logger.Error("failed to insert record: %v", zap.Error(err))
 		return err
 	}
 
@@ -246,7 +251,7 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		cacheBookAccountID,
 	)
 	if err != nil {
-		logger.Error("failed to insert record", zap.Error(err))
+		s.Logger.Error("failed to insert record", zap.Error(err))
 		return err
 	}
 	err = tx.Commit(ctx)
@@ -272,29 +277,37 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		}
 	}()
 
-	var balance User
-	err = tx.QueryRow(ctx, updateRollUpTable, sender).Scan(&balance.Balance)
+	refreshSql := `REFRESH MATERIALIZED VIEW account_balances;`
+
+	_, err = tx.Exec(ctx, refreshSql)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
-			logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
-			return ErrUserAvailability
+		s.Logger.Error("error refreshing materialized view", zap.Error(err))
+		return err
+	}
+
+	selectSql := `SELECT balance FROM account_balances WHERE user_id = $1;`
+
+	var balance User
+	err = tx.QueryRow(ctx, selectSql, sender).Scan(&balance.Balance)
+	if err != nil {
+		s.Logger.Error("error returning balance with specified ID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("user does not exist")
 		}
-		logger.Error("error returning user balance with specified id", zap.Error(err))
 		return err
 	}
 
 	if amount.GreaterThan(balance.Balance) {
-		logger.Error("insufficient funds on the sender's account", zap.Error(ErrTransfer))
-		return ErrTransfer
+		s.Logger.Error("insufficient funds on the user's account")
+		return err
 	}
 
-	firstInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee, description) 
+	firstInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee, description) 
 			VALUES ($1, $6, $4, -1 * $2, $3, $5, $7);`
 
 	_, err = tx.Exec(
 		ctx,
-		firstInsertExec,
+		firstInsertSql,
 		sender,
 		amount,
 		now.Format(time.RFC3339),
@@ -308,12 +321,12 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		return err
 	}
 
-	secondInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+	secondInsertSql := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
 			VALUES ($1, $6, $4, $2, $3, $5);`
 
 	_, err = tx.Exec(
 		ctx,
-		secondInsertExec,
+		secondInsertSql,
 		recipient,
 		amount,
 		now.Format(time.RFC3339),

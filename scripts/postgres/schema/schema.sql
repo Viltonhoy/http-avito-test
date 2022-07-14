@@ -11,8 +11,18 @@ CREATE TABLE posting(
 	description text 
 );
 
-CREATE TABLE balances(
-	balance bigint NOT NULL,
-    account_id bigint unique,
-    last_tx_id bigint NOT NULL
-);
+create materialized view account_balances(
+user_id, balance	
+) as select
+	account_id,
+	sum(amount) 
+from posting 
+group by account_id
+with no data;
+
+create materialized view history_table(
+account_id, cb_journal, amount, date, addressee, description
+) as select
+	account_id, cb_journal, amount, date, addressee, description 
+from posting 
+with no data;
