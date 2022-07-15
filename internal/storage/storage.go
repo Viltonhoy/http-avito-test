@@ -22,22 +22,7 @@ type Storage struct {
 
 const cacheBookAccountID = int64(0)
 
-const updateRollUpTable = `
-	with var1 as (
-	select id from posting where account_id = $1 order by id desc limit 1
-	), var2 as(
-	select coalesce(sum(amount),0) from posting where account_id = $1 and id > (select coalesce((select last_tx_id from balances where account_id = $1),0))
-	) insert into balances (
-	balance,
-	account_id,
-	last_tx_id
-	) values (
-	(select * from var2),
-	$1,
-	(select * from var1)
-	) on conflict (account_id) do update
-	set last_tx_id = (select * from var1),
-	balance = (select * from var2) + (select balance from balances where account_id = $1) returning balance`
+const checkUserBalance = `SELECT SUM(amount) FROM posting WHERE account_id = $1`
 
 var ErrUserAvailability = errors.New("sender does not exist")
 
@@ -103,7 +88,7 @@ func (s *Storage) ReadUserByID(ctx context.Context, userID int64) (u User, err e
 	}()
 
 	//query execution
-	err = tx.QueryRow(ctx, updateRollUpTable, userID).Scan(&u.Balance)
+	err = tx.QueryRow(ctx, checkUserBalance, userID).Scan(&u.Balance)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
@@ -199,7 +184,8 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 	}()
 
 	var balance User
-	err = tx.QueryRow(ctx, updateRollUpTable, userID).Scan(&balance.Balance)
+
+	err = tx.QueryRow(ctx, checkUserBalance, userID).Scan(&balance.Balance)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
@@ -273,7 +259,7 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 	}()
 
 	var balance User
-	err = tx.QueryRow(ctx, updateRollUpTable, sender).Scan(&balance.Balance)
+	err = tx.QueryRow(ctx, checkUserBalance, sender).Scan(&balance.Balance)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
