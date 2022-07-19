@@ -34,13 +34,14 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if *hand.Currency == "" {
-		http.Error(w, "incorrect currency code value", http.StatusBadRequest)
-		return
+	if hand.Currency == nil {
+		var cc = rubleCurrencyCode
+		hand.Currency = &cc
 	}
 
-	if hand.Currency == nil {
-		*hand.Currency = "RUB"
+	if hand.Currency != nil && *hand.Currency == "" {
+		http.Error(w, "incorrect currency code value", http.StatusBadRequest)
+		return
 	}
 
 	user, err := h.Store.ReadUserByID(r.Context(), int64(hand.UserId))
