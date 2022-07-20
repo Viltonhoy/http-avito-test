@@ -10,3 +10,8 @@ CREATE TABLE posting(
 	addressee bigint,
 	description text 
 );
+
+CREATE TABLE account_balances(
+	account_id bigint NOT NULL unique,
+	balances bigint 
+);
