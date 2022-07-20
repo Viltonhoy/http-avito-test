@@ -22,7 +22,11 @@ type Storage struct {
 
 const cacheBookAccountID = int64(0)
 
-const checkUserBalance = `SELECT SUM(amount) FROM posting WHERE account_id = $1`
+const checkUserBalance = `SELECT balances FROM account_balances WHERE account_id = $1`
+
+const updateTable = `INSERT INTO account_balances (account_id, balances)
+VALUES ($1, $2) on conflict (account_id) do update
+set balances = (select balances from account_balances where account_id = $1) + $2;`
 
 var ErrUserAvailability = errors.New("sender does not exist")
 
@@ -144,17 +148,11 @@ func (s *Storage) Deposit(ctx context.Context, userID int64, amount decimal.Deci
 		return err
 	}
 
-	secondInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
-			VALUES ($5, $3, $4, -1 * $1, $2);`
-
 	_, err = tx.Exec(
 		ctx,
-		secondInsertExec,
+		updateTable,
+		userID,
 		amount,
-		now.Format(time.RFC3339),
-		OperationTypeDeposit,
-		now,
-		cacheBookAccountID,
 	)
 	if err != nil {
 		logger.Error("failed to insert record", zap.Error(err))
@@ -219,17 +217,13 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		return err
 	}
 
-	secondInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date)
-			VALUES ($5, $3, $4, $1, $2);`
+	secondInsertExec := `update account_balances set balances = (select balances from account_balances where account_id = $1) + -1 * $2;`
 
 	_, err = tx.Exec(
 		ctx,
 		secondInsertExec,
+		userID,
 		amount,
-		now.Format(time.RFC3339),
-		OperationTypeWithdrawal,
-		now,
-		cacheBookAccountID,
 	)
 	if err != nil {
 		logger.Error("failed to insert record", zap.Error(err))
@@ -294,18 +288,42 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		return err
 	}
 
-	secondInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
-			VALUES ($1, $6, $4, $2, $3, $5);`
+	secondInsertExec := `update account_balances set balances = (select balances from account_balances where account_id = $1) + -1 * $2;`
 
 	_, err = tx.Exec(
 		ctx,
 		secondInsertExec,
+		sender,
+		amount,
+	)
+	if err != nil {
+		logger.Error("failed to insert record", zap.Error(err))
+		return err
+	}
+
+	thirdInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
+			VALUES ($1, $6, $4, $2, $3, $5);`
+
+	_, err = tx.Exec(
+		ctx,
+		thirdInsertExec,
 		recipient,
 		amount,
 		now.Format(time.RFC3339),
 		now,
 		sender,
 		OperationTypeTransfer,
+	)
+	if err != nil {
+		logger.Error("failed to insert record", zap.Error(err))
+		return err
+	}
+
+	_, err = tx.Exec(
+		ctx,
+		updateTable,
+		sender,
+		amount,
 	)
 	if err != nil {
 		logger.Error("failed to insert record", zap.Error(err))
