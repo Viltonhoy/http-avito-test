@@ -11,7 +11,7 @@ CREATE TABLE posting(
 	description text 
 );
 
-CREATE TABLE account_balances(
+CREATE TABLE user_balances(
 	account_id bigint NOT NULL unique,
 	balances bigint 
 );
