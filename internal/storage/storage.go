@@ -22,11 +22,11 @@ type Storage struct {
 
 const cacheBookAccountID = int64(0)
 
-const checkUserBalance = `SELECT balances FROM account_balances WHERE account_id = $1`
+const checkUserBalance = `SELECT balances FROM user_balances WHERE account_id = $1`
 
-const updateTable = `INSERT INTO account_balances (account_id, balances)
+const updateTable = `INSERT INTO user_balances (account_id, balances)
 VALUES ($1, $2) on conflict (account_id) do update
-set balances = (select balances from account_balances where account_id = $1) + $2;`
+set balances = (select balances from user_balances where account_id = $1) + $2;`
 
 var ErrUserAvailability = errors.New("sender does not exist")
 
@@ -217,7 +217,7 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 		return err
 	}
 
-	secondInsertExec := `update account_balances set balances = (select balances from account_balances where account_id = $1) + -1 * $2;`
+	secondInsertExec := `update user_balances set balances = (select balances from user_balances where account_id = $1) + -1 * $2;`
 
 	_, err = tx.Exec(
 		ctx,
@@ -288,7 +288,7 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		return err
 	}
 
-	secondInsertExec := `update account_balances set balances = (select balances from account_balances where account_id = $1) + -1 * $2;`
+	secondInsertExec := `update user_balances set balances = (select balances from user_balances where account_id = $1) + -1 * $2;`
 
 	_, err = tx.Exec(
 		ctx,
