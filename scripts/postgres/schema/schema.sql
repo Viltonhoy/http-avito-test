@@ -11,7 +11,7 @@ CREATE TABLE posting(
 	description text 
 );
 
-create view user_balances(
+create view user_balance(
 user_id, balance	
 ) as select
 	account_id,
