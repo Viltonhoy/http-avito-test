@@ -42,9 +42,10 @@ const updateRollUpTable = `
 var ErrUserAvailability = errors.New("sender does not exist")
 
 var (
-	ErrWithdrawal = errors.New("not enough money to withdraw")
-	ErrTransfer   = errors.New("not enough money to transfer")
-	ErrNoUser     = errors.New("user does not exist")
+	ErrWithdrawal    = errors.New("not enough money to withdraw")
+	ErrTransfer      = errors.New("not enough money to transfer")
+	ErrNoUser        = errors.New("user does not exist")
+	ErrSerialization = errors.New("serialization level error")
 )
 
 // NewStore constructs Store instance with configured logger
@@ -185,7 +186,7 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 
 	var now = time.Now()
 
-	tx, err := s.DB.Begin(ctx)
+	tx, err := s.DB.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return err
 	}
@@ -202,6 +203,10 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 	err = tx.QueryRow(ctx, updateRollUpTable, userID).Scan(&balance.Balance)
 	if err != nil {
 		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.SerializationFailure {
+			logger.Warn("", zap.Error(err))
+			return ErrSerialization
+		}
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
 			logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
 			return ErrUserAvailability
@@ -259,7 +264,7 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 
 	var now = time.Now()
 
-	tx, err := s.DB.Begin(ctx)
+	tx, err := s.DB.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return err
 	}
