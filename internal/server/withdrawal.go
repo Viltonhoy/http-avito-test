@@ -12,8 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var count = 0
-
 func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 	var hand *generated.AccountWithdrawalRequest
 
@@ -53,20 +51,26 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 
 	// Ошибка: при выполнении ретрая остальные запросы выполняются некорректно, увеличивая баланс пользователя, при этом действует ограничение
 	// в виде сериализуемого уровня изоляции транзакции. То есть несколько транзакций выполняются одновременно.
-	for newErr != nil {
-		switch {
-		case errors.Is(newErr, storage.ErrSerialization) && count < 5:
-			newErr = h.Store.Withdrawal(r.Context(), int64(hand.UserId), newBalance, hand.Description)
-			if newErr == storage.ErrSerialization {
-				count++
-			}
-		case count >= 5:
-			http.Error(w, "error updating balance", http.StatusInternalServerError)
-			return
-		}
-	}
+
+	// count := 0
+	// for newErr != nil {
+	// 	switch {
+	// 	case errors.Is(newErr, storage.ErrSerialization) && count < 5:
+	// 		newErr = h.Store.Withdrawal(r.Context(), int64(hand.UserId), newBalance, hand.Description)
+	// 		if newErr == storage.ErrSerialization {
+	// 			count++
+	// 		}
+	// 	case count >= 5:
+	// 		http.Error(w, "error updating balance", http.StatusTeapot)
+	// 		return
+	// 	}
+	// }
 
 	if newErr != nil {
+		if errors.Is(newErr, storage.ErrSerialization) {
+			http.Error(w, "error updating balance", http.StatusTeapot)
+			return
+		}
 		if errors.Is(newErr, storage.ErrWithdrawal) {
 			http.Error(w, "not enough money in the account", http.StatusBadRequest)
 			return
