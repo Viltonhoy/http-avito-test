@@ -250,5 +250,32 @@ func TestTransferCommand(t *testing.T) {
 
 			assert.Equal(t, "error updating balance\n", string(body))
 		})
+		t.Run("isolation level error", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			description := "test"
+
+			err := storage.ErrSerialization
+
+			m := NewMockStorager(ctrl)
+			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
+
+			arg := bytes.NewBuffer([]byte(`{"Sender":1000000, "Recipient":2, "Amount":100.00, "Description":"test"}`))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store: m,
+			}
+
+			s.TransferCommand(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "error updating balance\n", string(body))
+		})
 	})
 }

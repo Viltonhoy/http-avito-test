@@ -48,6 +48,10 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 
 	err = h.Store.Transfer(r.Context(), int64(hand.Sender), int64(hand.Recipient), newBalance, hand.Description)
 	if err != nil {
+		if errors.Is(err, storage.ErrSerialization) {
+			http.Error(w, "error updating balance", http.StatusInternalServerError)
+			return
+		}
 		if errors.Is(err, storage.ErrTransfer) {
 			http.Error(w, "not enough money in the account", http.StatusBadRequest)
 			return
