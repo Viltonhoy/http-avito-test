@@ -9,6 +9,7 @@
 
 ### Важные заметки:
 - `.env` файл был оставлен в репозитории для удобста проверки тестового задания;
+- В `.env` файле предоставлены данные по сервису, БД и exchangertestapi;
 
 ## План:
 
@@ -110,12 +111,46 @@ docker-compose -f ./deployments/docker-compose.yaml pull
 ```
 docker-compose -f ./deployments/docker-compose.yaml up
 ```
+
 ## Справочник по выполнению запросов:
+Для выполнения запросов к сервису использовался HTTP-клиент Postman;
+
 1. deposit:
-  - ```
+  - тип запроса: `POST`;
+  - URL запроса: `http://localhost:9090/deposit`
+  - Пример запроса: 
+  ```
   {"User_id":1, "Amount":1000}
   ``` 
 2. withdrawal:
+- тип запроса: `POST`;
+  - URL запроса: `http://localhost:9090/withdrawal`
+  - Пример запроса: 
+  ```
+  {"User_id":1, "Amount":1000, "Description":"test"}
+  ``` 
+3. transfer:
+- тип запроса: `POST`;
+  - URL запроса: `http://localhost:9090/transf`
+  - Пример запроса: 
+  ```
+  {"Sender":1, "Recipient":2, "Amount":1000, "Description":"test"}
+  ```
+4. readUser:
+- тип запроса: `POST`;
+  - URL запроса: `http://localhost:9090/read`
+  - Пример запроса: 
+  ```
+  {"User_id":1, "Currency":"RUB"}
+  ```
+5. readUserHistory:
+- тип запроса: `POST`;
+  - URL запроса: `http://localhost:9090/history`
+  - Пример запроса: 
+  ```
+  {"User_id":1, "Currency":"RUB"}
+  ```
+
 
 ## Список вопросов и проблем:
 1. Получение баланса пользователя из таблицы с двойной записью;
