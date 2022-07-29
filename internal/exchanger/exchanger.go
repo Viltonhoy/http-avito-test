@@ -1,3 +1,4 @@
+//package exchanger provides currency calculation using remote api
 package exchanger
 
 import (
@@ -16,6 +17,7 @@ import (
 
 const envApiKey = "API_KEY"
 
+// creating a client to work with a remote api
 type ExchangerClient struct {
 	apiKey string
 	Client *http.Client
@@ -33,6 +35,7 @@ func New() *ExchangerClient {
 	}
 }
 
+// exchanger returns the amount recalculated for the specified currency
 func (e *ExchangerClient) ExchangeRates(logger *zap.Logger, value decimal.Decimal, currency string) (decimal.Decimal, error) {
 	logger.Debug("starting exchanger rates")
 
