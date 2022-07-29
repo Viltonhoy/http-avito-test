@@ -231,7 +231,33 @@ func TestAccountWithdrawal(t *testing.T) {
 
 			assert.Equal(t, "error updating balance\n", string(body))
 		})
+		t.Run("level isolation error", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
+			err := storage.ErrSerialization
+
+			description := "test"
+
+			m := NewMockStorager(ctrl)
+			m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
+
+			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
+			w := httptest.NewRecorder()
+
+			s := Handler{
+				Store: m,
+			}
+
+			s.AccountWithdrawal(w, req)
+
+			resp := w.Result()
+			body, err := ioutil.ReadAll(resp.Body)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "error updating balance\n", string(body))
+		})
 	})
 
 }
