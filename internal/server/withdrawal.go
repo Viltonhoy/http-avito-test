@@ -44,6 +44,10 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 
 	newErr := h.Store.Withdrawal(r.Context(), int64(hand.UserId), newBalance, hand.Description)
 	if newErr != nil {
+		if errors.Is(newErr, storage.ErrSerialization) {
+			http.Error(w, "error updating balance", http.StatusInternalServerError)
+			return
+		}
 		if errors.Is(newErr, storage.ErrWithdrawal) {
 			http.Error(w, "not enough money in the account", http.StatusBadRequest)
 			return
