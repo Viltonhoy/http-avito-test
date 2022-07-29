@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// AddGeneratedTableData creates and populates a slice of values ​​to populate the posting table
+// using the input values ​​for the number of users and the number of records
 func AddGeneratedTableData(s *storage.Storage, userCount, totalRecordCount int) {
 	s.Logger.Debug(`add new rows for users to database`, zap.Int("totalRecordCount", totalRecordCount), zap.Int("userCount", userCount))
 

@@ -24,8 +24,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	postingTable := make([]Posting, 0, totalRecordCount)
 	userTotalBalances := make(map[int64]int64, userCount)
 
-	// Generating first values ​​for each user id with big amount values for
-	//
+	// Generating first values ​​for each user id with big amount values
 	for i := 1; i <= userCount; i++ {
 		year := time.Now()
 		amountValue := rand.Int63n(10000000) * 100
@@ -61,6 +60,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 		year := time.Now()
 
 		switch casheBookOperation[rand.Intn(len(casheBookOperation))] {
+		// Generating deposit values
 		case string(storage.OperationTypeDeposit):
 			accountID := rand.Intn(userCount-1) + 1
 			amount := rand.Int63n(10000000) * 100
@@ -84,6 +84,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 			)
 
 			userTotalBalances[int64(accountID)] += amount
+			// Generating withdrawal values
 		case string(storage.OperationTypeWithdrawal):
 			accountID := rand.Intn(userCount-1) + 1
 			if userTotalBalances[int64(accountID)] == 1 {
@@ -111,6 +112,8 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 			)
 
 			userTotalBalances[int64(accountID)] -= amount
+
+			// Generating transfer values
 		case string(storage.OperationTypeTransfer):
 			var senderID, oldAmount, amount int64
 
