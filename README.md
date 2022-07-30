@@ -159,14 +159,14 @@ docker-compose -f ./deployments/docker-compose.yaml up
   - URL запроса: `http://localhost:9090/read`;
   - Пример запроса: 
   ```
-  {"User_id":1, "Currency":"EUR"} или  {"User_id":1} 
+  {"User_id":1, "Currency":"EUR"} или {"User_id":1} 
   ```
 5. readUserHistory:
   - тип запроса: `POST`;
   - URL запроса: `http://localhost:9090/history`;
   - Пример запроса: 
   ```
-  {"User_id":1, "Currency":"RUB"}
+  {"User_id":1, "order":"date", "limit":100, "offset":0}
   ```
 
 ## Список вопросов и проблем:
