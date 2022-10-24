@@ -6,6 +6,7 @@ import (
 	"http-avito-test/internal/server"
 	"http-avito-test/internal/storage"
 	"log"
+	"net/http"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -41,6 +42,16 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to create http server instance", zap.Error(err))
 	}
+
+	go func() {
+		mux := http.NewServeMux()
+
+		mux.Handle("/", http.FileServer(http.Dir("../../file_storage")))
+
+		log.Println("Запуск сервера на http://localhost:4000")
+		err := http.ListenAndServe(":4000", mux)
+		log.Fatal(err)
+	}()
 
 	err = srv.Start()
 	if err != nil {
