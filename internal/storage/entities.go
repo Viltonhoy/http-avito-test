@@ -35,3 +35,10 @@ const (
 	OrderByAmount OrdBy = "amount"
 	OrderByDate   OrdBy = "date"
 )
+
+type ExpensesType string
+
+const (
+	ExpensesTypeReservation   ExpensesType = "reservation"
+	ExpensesTypeUnreservation ExpensesType = "unreservation"
+)
