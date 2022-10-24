@@ -28,7 +28,7 @@ func bootstrap(t *testing.T) *Storage {
 	s, err := NewStorage(context.Background(), logger)
 	require.NoError(t, err)
 
-	truncate := `TRUNCATE posting, balances RESTART IDENTITY;`
+	truncate := `TRUNCATE posting, balances CASCADE;`
 
 	_, err = s.DB.Exec(context.Background(), truncate)
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestDeposit(t *testing.T) {
 	var expectedPostingTable = []testPosting{
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.NewFromInt(10000),
 			},
@@ -55,7 +55,7 @@ func TestDeposit(t *testing.T) {
 		},
 	}
 
-	err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+	err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 	require.NoError(t, err)
 
 	sql := "select * from posting"
@@ -96,7 +96,7 @@ func TestWithdrawal(t *testing.T) {
 	var expectedPostingTable = []testPosting{
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.NewFromInt(10000),
 			},
@@ -110,7 +110,7 @@ func TestWithdrawal(t *testing.T) {
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeWithdrawal,
 				Amount:    decimal.NewFromInt(-10000),
 			},
@@ -123,11 +123,11 @@ func TestWithdrawal(t *testing.T) {
 			},
 		},
 	}
-	err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+	err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 	require.NoError(t, err)
 
 	description := "test"
-	err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(10000), &description)
+	err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
 	sql := "select * from posting"
@@ -169,7 +169,7 @@ func TestTransfer(t *testing.T) {
 	var expectedPostingTable = []testPosting{
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.NewFromInt(10000),
 			},
@@ -183,24 +183,24 @@ func TestTransfer(t *testing.T) {
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeTransfer,
 				Amount:    decimal.NewFromInt(-10000),
 			},
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(2),
+				AccountID: int64(3),
 				CashBook:  OperationTypeTransfer,
 				Amount:    decimal.NewFromInt(10000),
 			},
 		},
 	}
-	err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+	err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 	require.NoError(t, err)
 
 	description := "test"
-	err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(10000), &description)
+	_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
 	sql := "select * from posting"
@@ -240,23 +240,23 @@ func TestReadUserById(t *testing.T) {
 	s := bootstrap(t)
 	expectBalance := decimal.NewFromInt(25000)
 
-	err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+	err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 	require.NoError(t, err)
 
-	err = s.Deposit(context.Background(), 1, decimal.NewFromInt(20000))
+	err = s.Deposit(context.Background(), 2, decimal.NewFromInt(20000))
 	require.NoError(t, err)
 
-	err = s.Deposit(context.Background(), 1, decimal.NewFromInt(15000))
+	err = s.Deposit(context.Background(), 2, decimal.NewFromInt(15000))
 	require.NoError(t, err)
 
 	description := "test"
-	err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(10000), &description)
+	err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
-	err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(10000), &description)
+	_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
-	user, err := s.ReadUserByID(context.Background(), 1)
+	user, err := s.ReadUserByID(context.Background(), 2)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectBalance, user.Balance)
@@ -268,62 +268,62 @@ func TestReadUserHistory(t *testing.T) {
 	var expectedPostingTable = []testPosting{
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeWithdrawal,
 				Amount:    decimal.New(decimal.NewFromInt(-10000).IntPart(), -2),
 			},
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeTransfer,
 				Amount:    decimal.New(decimal.NewFromInt(-10000).IntPart(), -2),
 				Addressee: sql.NullInt64{
-					Int64: 2,
+					Int64: 3,
 					Valid: true,
 				},
 			},
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.New(decimal.NewFromInt(10000).IntPart(), -2),
 			},
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.New(decimal.NewFromInt(15000).IntPart(), -2),
 			},
 		},
 		{
 			Posting: ReadUserHistoryResult{
-				AccountID: int64(1),
+				AccountID: int64(2),
 				CashBook:  OperationTypeDeposit,
 				Amount:    decimal.New(decimal.NewFromInt(20000).IntPart(), -2),
 			},
 		},
 	}
 
-	err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+	err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 	require.NoError(t, err)
 
-	err = s.Deposit(context.Background(), 1, decimal.NewFromInt(20000))
+	err = s.Deposit(context.Background(), 2, decimal.NewFromInt(20000))
 	require.NoError(t, err)
 
-	err = s.Deposit(context.Background(), 1, decimal.NewFromInt(15000))
+	err = s.Deposit(context.Background(), 2, decimal.NewFromInt(15000))
 	require.NoError(t, err)
 
 	description := "test"
-	err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(10000), &description)
+	err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
-	err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(10000), &description)
+	_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(10000), &description)
 	require.NoError(t, err)
 
-	user, err := s.ReadUserHistoryList(context.Background(), 1, "amount", 100, 0)
+	user, err := s.ReadUserHistoryList(context.Background(), 2, "amount", 100, 0)
 	require.NoError(t, err)
 
 	assert.Len(t, user, len(expectedPostingTable))
@@ -343,20 +343,20 @@ func TestZeroSumOfAmount(t *testing.T) {
 		s := bootstrap(t)
 		var totalAmount decimal.Decimal
 
-		err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+		err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 		require.NoError(t, err)
 
-		err = s.Deposit(context.Background(), 1, decimal.NewFromInt(20000))
+		err = s.Deposit(context.Background(), 2, decimal.NewFromInt(20000))
 		require.NoError(t, err)
 
-		err = s.Deposit(context.Background(), 1, decimal.NewFromInt(15000))
+		err = s.Deposit(context.Background(), 2, decimal.NewFromInt(15000))
 		require.NoError(t, err)
 
 		description := "test"
-		err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(10000), &description)
+		err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(10000), &description)
 		require.NoError(t, err)
 
-		err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(10000), &description)
+		_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(10000), &description)
 		require.NoError(t, err)
 
 		sql := "select sum(amount) from posting;"
@@ -370,20 +370,20 @@ func TestZeroSumOfAmount(t *testing.T) {
 		s := bootstrap(t)
 		var totalAmount decimal.Decimal
 
-		err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+		err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 		require.NoError(t, err)
 
-		err = s.Deposit(context.Background(), 1, decimal.NewFromInt(20000))
+		err = s.Deposit(context.Background(), 2, decimal.NewFromInt(20000))
 		require.NoError(t, err)
 
-		err = s.Deposit(context.Background(), 1, decimal.NewFromInt(15000))
+		err = s.Deposit(context.Background(), 2, decimal.NewFromInt(15000))
 		require.NoError(t, err)
 
 		description := "test"
-		err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(10000), &description)
+		err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(10000), &description)
 		require.NoError(t, err)
 
-		err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(10000), &description)
+		_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(10000), &description)
 		require.NoError(t, err)
 
 		sql := "select sum(amount) from posting limit 100;"
@@ -398,24 +398,24 @@ func TestNotEnoughMoney(t *testing.T) {
 	t.Run("withdrawal", func(t *testing.T) {
 		s := bootstrap(t)
 
-		err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+		err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 		require.NoError(t, err)
 
 		description := "test"
 
-		err = s.Withdrawal(context.Background(), 1, decimal.NewFromInt(20000), &description)
+		err = s.Withdrawal(context.Background(), 2, decimal.NewFromInt(20000), &description)
 		assert.ErrorIs(t, ErrWithdrawal, err)
 	})
 
 	t.Run("transfer", func(t *testing.T) {
 		s := bootstrap(t)
 
-		err := s.Deposit(context.Background(), 1, decimal.NewFromInt(10000))
+		err := s.Deposit(context.Background(), 2, decimal.NewFromInt(10000))
 		require.NoError(t, err)
 
 		description := "test"
 
-		err = s.Transfer(context.Background(), 1, 2, decimal.NewFromInt(20000), &description)
+		_, _, err = s.Transfer(context.Background(), 2, 3, decimal.NewFromInt(20000), &description)
 		assert.ErrorIs(t, ErrTransfer, err)
 	})
 }
