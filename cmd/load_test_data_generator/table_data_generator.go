@@ -25,7 +25,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 	userTotalBalances := make(map[int64]int64, userCount)
 
 	// Generating first values ​​for each user id with big amount values
-	for i := 1; i <= userCount; i++ {
+	for i := 2; i <= userCount; i++ {
 		year := time.Now()
 		amountValue := rand.Int63n(10000000) * 100
 
@@ -52,7 +52,7 @@ func GenerateTableData(userCount, totalRecordCount int) []Posting {
 
 	casheBookOperation := []string{string(storage.OperationTypeDeposit), string(storage.OperationTypeTransfer), string(storage.OperationTypeWithdrawal)}
 
-	var i int = 1
+	var i int = 2
 	n := (totalRecordCount - 2*userCount) / 2
 	for i <= n {
 
