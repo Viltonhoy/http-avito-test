@@ -51,6 +51,21 @@ func (mr *MockStoragerMockRecorder) Deposit(arg0, arg1, arg2 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deposit", reflect.TypeOf((*MockStorager)(nil).Deposit), arg0, arg1, arg2)
 }
 
+// MonthlyReport mocks base method.
+func (m *MockStorager) MonthlyReport(ctx context.Context, year, month int64) ([][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MonthlyReport", ctx, year, month)
+	ret0, _ := ret[0].([][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MonthlyReport indicates an expected call of MonthlyReport.
+func (mr *MockStoragerMockRecorder) MonthlyReport(ctx, year, month interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MonthlyReport", reflect.TypeOf((*MockStorager)(nil).MonthlyReport), ctx, year, month)
+}
+
 // ReadUserByID mocks base method.
 func (m *MockStorager) ReadUserByID(arg0 context.Context, arg1 int64) (storage.User, error) {
 	m.ctrl.T.Helper()
@@ -81,18 +96,67 @@ func (mr *MockStoragerMockRecorder) ReadUserHistoryList(ctx, user_id, order, lim
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadUserHistoryList", reflect.TypeOf((*MockStorager)(nil).ReadUserHistoryList), ctx, user_id, order, limit, offset)
 }
 
-// Transfer mocks base method.
-func (m *MockStorager) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description *string) error {
+// Reservation mocks base method.
+func (m *MockStorager) Reservation(ctx context.Context, UserId, ServiceId, OrderId int64, Price decimal.Decimal, description *string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transfer", ctx, user_id1, user_id2, amount, description)
+	ret := m.ctrl.Call(m, "Reservation", ctx, UserId, ServiceId, OrderId, Price, description)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Transfer indicates an expected call of Transfer.
-func (mr *MockStoragerMockRecorder) Transfer(ctx, user_id1, user_id2, amount, description interface{}) *gomock.Call {
+// Reservation indicates an expected call of Reservation.
+func (mr *MockStoragerMockRecorder) Reservation(ctx, UserId, ServiceId, OrderId, Price, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), ctx, user_id1, user_id2, amount, description)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reservation", reflect.TypeOf((*MockStorager)(nil).Reservation), ctx, UserId, ServiceId, OrderId, Price, description)
+}
+
+// Revenue mocks base method.
+func (m *MockStorager) Revenue(ctx context.Context, UserId, ServiceId, OrderId int64, Sum decimal.Decimal, description *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Revenue", ctx, UserId, ServiceId, OrderId, Sum, description)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Revenue indicates an expected call of Revenue.
+func (mr *MockStoragerMockRecorder) Revenue(ctx, UserId, ServiceId, OrderId, Sum, description interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revenue", reflect.TypeOf((*MockStorager)(nil).Revenue), ctx, UserId, ServiceId, OrderId, Sum, description)
+}
+
+// Transfer mocks base method.
+func (m *MockStorager) Transfer(ctx context.Context, user_id1, user_id2 int64, amount decimal.Decimal, description *string, options ...storage.TxOption) (int64, int64, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, user_id1, user_id2, amount, description}
+	for _, a := range options {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Transfer", varargs...)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Transfer indicates an expected call of Transfer.
+func (mr *MockStoragerMockRecorder) Transfer(ctx, user_id1, user_id2, amount, description interface{}, options ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, user_id1, user_id2, amount, description}, options...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockStorager)(nil).Transfer), varargs...)
+}
+
+// Unreservation mocks base method.
+func (m *MockStorager) Unreservation(ctx context.Context, UserId, ServiceId, OrderId int64, description *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unreservation", ctx, UserId, ServiceId, OrderId, description)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Unreservation indicates an expected call of Unreservation.
+func (mr *MockStoragerMockRecorder) Unreservation(ctx, UserId, ServiceId, OrderId, description interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unreservation", reflect.TypeOf((*MockStorager)(nil).Unreservation), ctx, UserId, ServiceId, OrderId, description)
 }
 
 // Withdrawal mocks base method.
