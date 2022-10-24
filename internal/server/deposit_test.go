@@ -30,9 +30,9 @@ func TestAccountDeposit(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(nil)
+		m.EXPECT().Deposit(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(nil)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 		w := httptest.NewRecorder()
 
@@ -103,7 +103,7 @@ func TestAccountDeposit(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.345}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.345}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 			w := httptest.NewRecorder()
 
@@ -128,7 +128,7 @@ func TestAccountDeposit(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":0}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":0}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 			w := httptest.NewRecorder()
 
@@ -155,9 +155,9 @@ func TestAccountDeposit(t *testing.T) {
 		err := errors.New("error updating balance")
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().Deposit(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(err)
+		m.EXPECT().Deposit(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100))).Return(err)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/deposit", arg)
 		w := httptest.NewRecorder()
 

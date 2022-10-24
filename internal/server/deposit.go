@@ -22,7 +22,7 @@ func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.UserId <= 0 {
+	if hand.UserId <= 1 {
 		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
@@ -38,7 +38,7 @@ func (h *Handler) AccountDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.Store.Deposit(r.Context(), int64(hand.UserId), newBalance)
+	err = h.Store.Deposit(r.Context(), hand.UserId, newBalance)
 	if err != nil {
 		http.Error(w, "error updating balance", http.StatusInternalServerError)
 		return
