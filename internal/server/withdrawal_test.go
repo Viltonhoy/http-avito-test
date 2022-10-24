@@ -33,9 +33,9 @@ func TestAccountWithdrawal(t *testing.T) {
 		description := "test"
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(nil)
+		m.EXPECT().Withdrawal(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(nil)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00, "Description":"test"}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 		w := httptest.NewRecorder()
 
@@ -106,7 +106,7 @@ func TestAccountWithdrawal(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.345}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.345}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 			w := httptest.NewRecorder()
 
@@ -131,7 +131,7 @@ func TestAccountWithdrawal(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":0}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":0}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawwal", arg)
 			w := httptest.NewRecorder()
 
@@ -159,9 +159,9 @@ func TestAccountWithdrawal(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrWithdrawal)
+			m.EXPECT().Withdrawal(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrWithdrawal)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 			w := httptest.NewRecorder()
 
@@ -185,9 +185,9 @@ func TestAccountWithdrawal(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrUserAvailability)
+			m.EXPECT().Withdrawal(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrUserAvailability)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 			w := httptest.NewRecorder()
 
@@ -213,9 +213,9 @@ func TestAccountWithdrawal(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
+			m.EXPECT().Withdrawal(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 			w := httptest.NewRecorder()
 
@@ -240,9 +240,9 @@ func TestAccountWithdrawal(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Withdrawal(gomock.Any(), int64(1), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
+			m.EXPECT().Withdrawal(gomock.Any(), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/withdrawal", arg)
 			w := httptest.NewRecorder()
 

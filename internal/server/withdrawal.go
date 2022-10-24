@@ -22,7 +22,7 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.UserId <= 0 {
+	if hand.UserId <= 1 {
 		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
@@ -42,7 +42,7 @@ func (h *Handler) AccountWithdrawal(w http.ResponseWriter, r *http.Request) {
 		hand.Description = nil
 	}
 
-	newErr := h.Store.Withdrawal(r.Context(), int64(hand.UserId), newBalance, hand.Description)
+	newErr := h.Store.Withdrawal(r.Context(), hand.UserId, newBalance, hand.Description)
 	if newErr != nil {
 		if errors.Is(newErr, storage.ErrSerialization) {
 			http.Error(w, "error updating balance", http.StatusInternalServerError)

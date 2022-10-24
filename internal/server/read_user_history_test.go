@@ -23,19 +23,19 @@ func TestReadUserHostory(t *testing.T) {
 		var testHistoryList = generated.ReadUserHistoryResponse{
 			Result: []storage.ReadUserHistoryResult{
 				{
-					AccountID: 1,
+					AccountID: 2,
 					CashBook:  "deposit",
 					Amount:    decimal.NewFromInt(100),
 					Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
 				},
 				{
-					AccountID: 1,
+					AccountID: 2,
 					CashBook:  "deposit",
 					Amount:    decimal.NewFromInt(120),
 					Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
 				},
 				{
-					AccountID: 1,
+					AccountID: 2,
 					CashBook:  "deposit",
 					Amount:    decimal.NewFromInt(130),
 					Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
@@ -48,21 +48,21 @@ func TestReadUserHostory(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), storage.OrderByAmount, int64(100), int64(0)).Return([]storage.ReadUserHistoryResult{
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(2), storage.OrderByAmount, int64(100), int64(0)).Return([]storage.ReadUserHistoryResult{
 			{
-				AccountID: 1,
+				AccountID: 2,
 				CashBook:  "deposit",
 				Amount:    decimal.NewFromInt(100),
 				Date:      time.Date(2022, time.May, 05, 1, 0, 0, 0, time.UTC),
 			},
 			{
-				AccountID: 1,
+				AccountID: 2,
 				CashBook:  "deposit",
 				Amount:    decimal.NewFromInt(120),
 				Date:      time.Date(2022, time.May, 05, 2, 0, 0, 0, time.UTC),
 			},
 			{
-				AccountID: 1,
+				AccountID: 2,
 				CashBook:  "deposit",
 				Amount:    decimal.NewFromInt(130),
 				Date:      time.Date(2022, time.May, 05, 3, 0, 0, 0, time.UTC),
@@ -71,7 +71,7 @@ func TestReadUserHostory(t *testing.T) {
 			nil,
 		)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "amount", "Limit":100, "Offset":0}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Order": "amount", "Limit":100, "Offset":0}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 		w := httptest.NewRecorder()
@@ -121,7 +121,7 @@ func TestReadUserHostory(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "account_id", "Limit":100, "Offset":0}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Order": "account_id", "Limit":100, "Offset":0}`))
 
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 			w := httptest.NewRecorder()
@@ -170,9 +170,9 @@ func TestReadUserHostory(t *testing.T) {
 		err := errors.New("can not read user history")
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserHistoryList(context.Background(), int64(1), storage.OrderByAmount, int64(100), int64(0)).Return(nil, err)
+		m.EXPECT().ReadUserHistoryList(context.Background(), int64(2), storage.OrderByAmount, int64(100), int64(0)).Return(nil, err)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Order": "amount", "Limit":100, "Offset":0}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Order": "amount", "Limit":100, "Offset":0}`))
 
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/history", arg)
 		w := httptest.NewRecorder()

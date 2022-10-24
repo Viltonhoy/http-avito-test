@@ -24,12 +24,12 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(storage.User{
-			AccountID: 1,
+		m.EXPECT().ReadUserByID(context.Background(), int64(2)).Return(storage.User{
+			AccountID: 2,
 			Balance:   decimal.NewFromInt(10000),
 		}, nil)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUB"}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Currency":"RUB"}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
@@ -38,7 +38,7 @@ func TestReadUser(t *testing.T) {
 		}
 
 		s.ReadUser(w, req)
-		resptest := "{\"result\":{\"balance\":\"100\",\"user_id\":1},\"status\":\"ok\"}"
+		resptest := "{\"result\":{\"balance\":\"100\",\"user_id\":2},\"status\":\"ok\"}"
 		resp := w.Result()
 		body, _ := ioutil.ReadAll(resp.Body)
 
@@ -92,7 +92,7 @@ func TestReadUser(t *testing.T) {
 
 		m := NewMockStorager(ctrl)
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":""}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Currency":""}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
@@ -140,11 +140,11 @@ func TestReadUser(t *testing.T) {
 		defer ctrl.Finish()
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+		m.EXPECT().ReadUserByID(context.Background(), int64(2)).Return(
 			storage.User{},
 			errors.New("cannot read user with specified id"))
 
-		arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUB"}`))
+		arg := bytes.NewBuffer([]byte(`{"User_id":2, "Currency":"RUB"}`))
 		req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 		w := httptest.NewRecorder()
 
@@ -170,12 +170,12 @@ func TestReadUser(t *testing.T) {
 			var logger *zap.Logger
 
 			newStorage := storage.User{
-				AccountID: 1,
+				AccountID: 2,
 				Balance:   decimal.NewFromInt(10000),
 			}
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+			m.EXPECT().ReadUserByID(context.Background(), int64(2)).Return(
 				newStorage,
 				nil)
 
@@ -183,7 +183,7 @@ func TestReadUser(t *testing.T) {
 			e.EXPECT().ExchangeRates(logger, decimal.New(newStorage.Balance.IntPart(), int32(-2)), "RUBBB").Return(decimal.NewFromInt(0),
 				exchanger.ErrExchanger)
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"RUBBB"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Currency":"RUBBB"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 			w := httptest.NewRecorder()
 
@@ -209,12 +209,12 @@ func TestReadUser(t *testing.T) {
 			var logger *zap.Logger
 
 			newStorage := storage.User{
-				AccountID: 1,
+				AccountID: 2,
 				Balance:   decimal.NewFromInt(10000),
 			}
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().ReadUserByID(context.Background(), int64(1)).Return(
+			m.EXPECT().ReadUserByID(context.Background(), int64(2)).Return(
 				newStorage,
 				nil)
 
@@ -222,7 +222,7 @@ func TestReadUser(t *testing.T) {
 			e.EXPECT().ExchangeRates(logger, decimal.New(newStorage.Balance.IntPart(), int32(-2)), "EUR").Return(decimal.NewFromInt(0),
 				errors.New(""))
 
-			arg := bytes.NewBuffer([]byte(`{"User_id":1, "Currency":"EUR"}`))
+			arg := bytes.NewBuffer([]byte(`{"User_id":2, "Currency":"EUR"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://loacalhost:9090/read", arg)
 			w := httptest.NewRecorder()
 

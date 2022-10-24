@@ -38,7 +38,7 @@ func (h *Handler) ReadUserHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Store.ReadUserHistoryList(r.Context(), int64(hand.UserId), hand.Order, int64(hand.Limit), int64(hand.Offset))
+	user, err := h.Store.ReadUserHistoryList(r.Context(), hand.UserId, hand.Order, hand.Limit, hand.Offset)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoUser) {
 			http.Error(w, "user does not exist", http.StatusBadRequest)

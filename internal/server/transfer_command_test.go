@@ -33,9 +33,9 @@ func TestTransferCommand(t *testing.T) {
 		description := "test"
 
 		m := NewMockStorager(ctrl)
-		m.EXPECT().Transfer(gomock.Any(), int64(1), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(nil)
+		m.EXPECT().Transfer(gomock.Any(), int64(2), int64(3), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(int64(2), int64(2), nil)
 
-		arg := bytes.NewBuffer([]byte(`{"Sender":1, "Recipient":2, "Amount":100.00, "Description":"test"}`))
+		arg := bytes.NewBuffer([]byte(`{"Sender":2, "Recipient":3, "Amount":100.00, "Description":"test"}`))
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
 		w := httptest.NewRecorder()
 
@@ -106,7 +106,7 @@ func TestTransferCommand(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"Sender":1, "Recipient":0, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"Sender":2, "Recipient":0, "Amount":100.00, "Description":"test"}`))
 
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
 			w := httptest.NewRecorder()
@@ -131,7 +131,7 @@ func TestTransferCommand(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"Sender":1, "Recipient":2, "Amount":100.111, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"Sender":2, "Recipient":3, "Amount":100.111, "Description":"test"}`))
 
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
 			w := httptest.NewRecorder()
@@ -154,7 +154,7 @@ func TestTransferCommand(t *testing.T) {
 
 			m := NewMockStorager(ctrl)
 
-			arg := bytes.NewBuffer([]byte(`{"Sender":1, "Recipient":2, "Amount":-100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"Sender":2, "Recipient":3, "Amount":-100.00, "Description":"test"}`))
 
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
 			w := httptest.NewRecorder()
@@ -180,9 +180,9 @@ func TestTransferCommand(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Transfer(gomock.Any(), int64(1), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrTransfer)
+			m.EXPECT().Transfer(gomock.Any(), int64(2), int64(3), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(int64(0), int64(0), storage.ErrTransfer)
 
-			arg := bytes.NewBuffer([]byte(`{"Sender":1, "Recipient":2, "Amount":100.00, "Description":"test"}`))
+			arg := bytes.NewBuffer([]byte(`{"Sender":2, "Recipient":3, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
 			w := httptest.NewRecorder()
 
@@ -206,7 +206,7 @@ func TestTransferCommand(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(storage.ErrUserAvailability)
+			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(int64(0), int64(0), storage.ErrUserAvailability)
 
 			arg := bytes.NewBuffer([]byte(`{"Sender":1000000, "Recipient":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
@@ -232,7 +232,7 @@ func TestTransferCommand(t *testing.T) {
 			description := "test"
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(errors.New(""))
+			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(int64(0), int64(0), errors.New(""))
 
 			arg := bytes.NewBuffer([]byte(`{"Sender":1000000, "Recipient":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)
@@ -259,7 +259,7 @@ func TestTransferCommand(t *testing.T) {
 			err := storage.ErrSerialization
 
 			m := NewMockStorager(ctrl)
-			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(err)
+			m.EXPECT().Transfer(gomock.Any(), int64(1000000), int64(2), decimal.NewFromFloat32(100).Mul(decimal.NewFromInt(100)), &description).Return(int64(0), int64(0), err)
 
 			arg := bytes.NewBuffer([]byte(`{"Sender":1000000, "Recipient":2, "Amount":100.00, "Description":"test"}`))
 			req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/transf", arg)

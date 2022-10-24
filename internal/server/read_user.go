@@ -29,7 +29,7 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hand.UserId <= 0 {
+	if hand.UserId <= 1 {
 		http.Error(w, "wrong value of \"User_id\"", http.StatusBadRequest)
 		return
 	}
@@ -78,10 +78,10 @@ func (h *Handler) ReadUser(w http.ResponseWriter, r *http.Request) {
 	result := generated.ReadUserResponse{
 		Result: struct {
 			Balance decimal.Decimal "json:\"balance\""
-			UserId  int             "json:\"user_id\""
+			UserId  int64           "json:\"user_id\""
 		}{
 			Balance: newBalance,
-			UserId:  int(user.AccountID),
+			UserId:  user.AccountID,
 		},
 		Status: "ok",
 	}

@@ -23,10 +23,10 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
-	case hand.Sender <= 0:
+	case hand.Sender <= 1:
 		http.Error(w, "wrong value of \"Sender\"", http.StatusBadRequest)
 		return
-	case hand.Recipient <= 0:
+	case hand.Recipient <= 1:
 		http.Error(w, "wrong value of \"Recipient\"", http.StatusBadRequest)
 		return
 	}
@@ -46,7 +46,7 @@ func (h *Handler) TransferCommand(w http.ResponseWriter, r *http.Request) {
 		hand.Description = nil
 	}
 
-	err = h.Store.Transfer(r.Context(), int64(hand.Sender), int64(hand.Recipient), newBalance, hand.Description)
+	_, _, err = h.Store.Transfer(r.Context(), hand.Sender, hand.Recipient, newBalance, hand.Description)
 	if err != nil {
 		if errors.Is(err, storage.ErrSerialization) {
 			http.Error(w, "error updating balance", http.StatusInternalServerError)
