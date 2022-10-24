@@ -27,6 +27,94 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReadUserResponse'
 
+  /api/{version}/reservationoffunds:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:  
+      summary: Reservation of funds
+      operationId: ReservationOfFunds
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationOfFundsRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationOfFundsResponse'
+
+  /api/{version}/monthlyreport:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:  
+      summary: Monthly Report
+      operationId: MonthlyReport
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MonthlyReportRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyReportResponse'
+
+  /api/{version}/unreservationoffunds:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:  
+      summary: Unreservation of funds
+      operationId: UnreservationOfFunds
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnreservationOfFundsRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreservationOfFundsResponse'
+
+  /api/{version}/revenuerecognition:
+    parameters:
+      - $ref: '#/components/parameters/Version'
+
+    post:  
+      summary: Revenue Recognition
+      operationId: RevenueRecognition
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevenueRecognitionRequest'
+
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueRecognitionResponse'  
+
   /api/{version}/readuserhistory:
     parameters:
       - $ref: '#/components/parameters/Version'
@@ -124,15 +212,87 @@ components:
       in: path 
       schema: 
         type: integer
+        format: int64
       required: true
 
   schemas:
+
+    RevenueRecognitionRequest:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        service_id:
+          type: integer
+          format: int64
+        order_id:
+          type: integer
+          format: int64
+        sum:
+          type: number
+      required:
+        - user_id
+        - service_id
+        - order_id
+        - sum
+
+    MonthlyReportRequest:
+      type: object
+      properties:
+        year:
+          type: integer
+          format: int64
+        month:
+          type: integer
+          format: int64
+      required:
+        - year
+        - month  
+
+    ReservationOfFundsRequest:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        service_id:
+          type: integer
+          format: int64
+        order_id:
+          type: integer
+          format: int64
+        price:
+          type: number
+      required:
+        - user_id
+        - service_id
+        - order_id
+        - price   
+
+    UnreservationOfFundsRequest:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        service_id:
+          type: integer
+          format: int64
+        order_id:
+          type: integer
+          format: int64
+      required:
+        - user_id
+        - service_id
+        - order_id
 
     ReadUserRequest:
       type: object
       properties:
         user_id:
           type: integer
+          format: int64
         currency: 
           type: string
           nullable: true
@@ -145,6 +305,7 @@ components:
       properties:
         user_id: 
           type: integer
+          format: int64
         order: 
           x-go-type: storage.OrdBy
           x-go-type-import: 
@@ -152,8 +313,10 @@ components:
             path: http-avito-test/internal/storage
         limit: 
           type: integer
+          format: int64
         offset: 
           type: integer 
+          format: int64
       required:	
         - user_id
         - order
@@ -165,6 +328,7 @@ components:
       properties:
         user_id: 
           type: integer
+          format: int64
         amount: 
           type: number
       required: 
@@ -176,6 +340,7 @@ components:
       properties:
         user_id: 
           type: integer
+          format: int64
         amount: 
           type: number 
         description:
@@ -191,8 +356,10 @@ components:
       properties:
         sender:
           type: integer
+          format: int64
         recipient: 
           type: integer
+          format: int64
         amount:
           type: number
         description:
@@ -214,6 +381,7 @@ components:
           properties:
             user_id:
               type: integer
+              format: int64
             balance:
               x-go-type: decimal.Decimal
               x-go-type-import:
@@ -225,6 +393,22 @@ components:
       required: 
         - status
         - result   
+
+    MonthlyReportResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        result:
+          type: object
+          properties:
+            link:
+              type: string
+          required:
+            - link
+      required:
+        - status
+        - result            
 
     ReadUserHistoryResponse:
       type: object
@@ -261,5 +445,14 @@ components:
     AccountWithdrawalResponse:
       $ref: '#/components/schemas/AccountDepositResponse'
 
+    ReservationOfFundsResponse:
+      $ref: '#/components/schemas/AccountDepositResponse'  
+
+    UnreservationOfFundsResponse:
+      $ref: '#/components/schemas/AccountDepositResponse'
+
     TransferCommandResponse:
       $ref: '#/components/schemas/AccountDepositResponse'
+
+    RevenueRecognitionResponse:
+      $ref: '#/components/schemas/AccountDepositResponse'  

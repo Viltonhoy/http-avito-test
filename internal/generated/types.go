@@ -12,7 +12,7 @@ import (
 // AccountDepositRequest defines model for AccountDepositRequest.
 type AccountDepositRequest struct {
 	Amount float32 `json:"amount"`
-	UserId int     `json:"user_id"`
+	UserId int64   `json:"user_id"`
 }
 
 // AccountDepositResponse defines model for AccountDepositResponse.
@@ -27,18 +27,32 @@ type AccountDepositResponse struct {
 type AccountWithdrawalRequest struct {
 	Amount      float32 `json:"amount"`
 	Description *string `json:"description"`
-	UserId      int     `json:"user_id"`
+	UserId      int64   `json:"user_id"`
 }
 
 // AccountWithdrawalResponse defines model for AccountWithdrawalResponse.
 type AccountWithdrawalResponse = AccountDepositResponse
 
+// MonthlyReportRequest defines model for MonthlyReportRequest.
+type MonthlyReportRequest struct {
+	Month int64 `json:"month"`
+	Year  int64 `json:"year"`
+}
+
+// MonthlyReportResponse defines model for MonthlyReportResponse.
+type MonthlyReportResponse struct {
+	Result struct {
+		Link string `json:"link"`
+	} `json:"result"`
+	Status string `json:"status"`
+}
+
 // ReadUserHistoryRequest defines model for ReadUserHistoryRequest.
 type ReadUserHistoryRequest struct {
-	Limit  int           `json:"limit"`
-	Offset int           `json:"offset"`
+	Limit  int64         `json:"limit"`
+	Offset int64         `json:"offset"`
 	Order  storage.OrdBy `json:"order"`
-	UserId int           `json:"user_id"`
+	UserId int64         `json:"user_id"`
 }
 
 // ReadUserHistoryResponse defines model for ReadUserHistoryResponse.
@@ -50,31 +64,63 @@ type ReadUserHistoryResponse struct {
 // ReadUserRequest defines model for ReadUserRequest.
 type ReadUserRequest struct {
 	Currency *string `json:"currency"`
-	UserId   int    `json:"user_id"`
+	UserId   int64   `json:"user_id"`
 }
 
 // ReadUserResponse defines model for ReadUserResponse.
 type ReadUserResponse struct {
 	Result struct {
 		Balance decimal.Decimal `json:"balance"`
-		UserId  int             `json:"user_id"`
+		UserId  int64           `json:"user_id"`
 	} `json:"result"`
 	Status string `json:"status"`
 }
+
+// ReservationOfFundsRequest defines model for ReservationOfFundsRequest.
+type ReservationOfFundsRequest struct {
+	OrderId   int64   `json:"order_id"`
+	Price     float32 `json:"price"`
+	ServiceId int64   `json:"service_id"`
+	UserId    int64   `json:"user_id"`
+}
+
+// ReservationOfFundsResponse defines model for ReservationOfFundsResponse.
+type ReservationOfFundsResponse = AccountDepositResponse
+
+// RevenueRecognitionRequest defines model for RevenueRecognitionRequest.
+type RevenueRecognitionRequest struct {
+	OrderId   int64   `json:"order_id"`
+	ServiceId int64   `json:"service_id"`
+	Sum       float32 `json:"sum"`
+	UserId    int64   `json:"user_id"`
+}
+
+// RevenueRecognitionResponse defines model for RevenueRecognitionResponse.
+type RevenueRecognitionResponse = AccountDepositResponse
 
 // TransferCommandRequest defines model for TransferCommandRequest.
 type TransferCommandRequest struct {
 	Amount      float32 `json:"amount"`
 	Description *string `json:"description"`
-	Recipient   int     `json:"recipient"`
-	Sender      int     `json:"sender"`
+	Recipient   int64   `json:"recipient"`
+	Sender      int64   `json:"sender"`
 }
 
 // TransferCommandResponse defines model for TransferCommandResponse.
 type TransferCommandResponse = AccountDepositResponse
 
+// UnreservationOfFundsRequest defines model for UnreservationOfFundsRequest.
+type UnreservationOfFundsRequest struct {
+	OrderId   int64 `json:"order_id"`
+	ServiceId int64 `json:"service_id"`
+	UserId    int64 `json:"user_id"`
+}
+
+// UnreservationOfFundsResponse defines model for UnreservationOfFundsResponse.
+type UnreservationOfFundsResponse = AccountDepositResponse
+
 // Version defines model for Version.
-type Version = int
+type Version = int64
 
 // AccountDepositJSONBody defines parameters for AccountDeposit.
 type AccountDepositJSONBody = AccountDepositRequest
@@ -82,14 +128,26 @@ type AccountDepositJSONBody = AccountDepositRequest
 // AccountWithdrawalJSONBody defines parameters for AccountWithdrawal.
 type AccountWithdrawalJSONBody = AccountWithdrawalRequest
 
+// MonthlyReportJSONBody defines parameters for MonthlyReport.
+type MonthlyReportJSONBody = MonthlyReportRequest
+
 // ReadUserJSONBody defines parameters for ReadUser.
 type ReadUserJSONBody = ReadUserRequest
 
 // ReadUserHistoryJSONBody defines parameters for ReadUserHistory.
 type ReadUserHistoryJSONBody = ReadUserHistoryRequest
 
+// ReservationOfFundsJSONBody defines parameters for ReservationOfFunds.
+type ReservationOfFundsJSONBody = ReservationOfFundsRequest
+
+// RevenueRecognitionJSONBody defines parameters for RevenueRecognition.
+type RevenueRecognitionJSONBody = RevenueRecognitionRequest
+
 // TransferCommandJSONBody defines parameters for TransferCommand.
 type TransferCommandJSONBody = TransferCommandRequest
+
+// UnreservationOfFundsJSONBody defines parameters for UnreservationOfFunds.
+type UnreservationOfFundsJSONBody = UnreservationOfFundsRequest
 
 // AccountDepositJSONRequestBody defines body for AccountDeposit for application/json ContentType.
 type AccountDepositJSONRequestBody = AccountDepositJSONBody
@@ -97,11 +155,23 @@ type AccountDepositJSONRequestBody = AccountDepositJSONBody
 // AccountWithdrawalJSONRequestBody defines body for AccountWithdrawal for application/json ContentType.
 type AccountWithdrawalJSONRequestBody = AccountWithdrawalJSONBody
 
+// MonthlyReportJSONRequestBody defines body for MonthlyReport for application/json ContentType.
+type MonthlyReportJSONRequestBody = MonthlyReportJSONBody
+
 // ReadUserJSONRequestBody defines body for ReadUser for application/json ContentType.
 type ReadUserJSONRequestBody = ReadUserJSONBody
 
 // ReadUserHistoryJSONRequestBody defines body for ReadUserHistory for application/json ContentType.
 type ReadUserHistoryJSONRequestBody = ReadUserHistoryJSONBody
 
+// ReservationOfFundsJSONRequestBody defines body for ReservationOfFunds for application/json ContentType.
+type ReservationOfFundsJSONRequestBody = ReservationOfFundsJSONBody
+
+// RevenueRecognitionJSONRequestBody defines body for RevenueRecognition for application/json ContentType.
+type RevenueRecognitionJSONRequestBody = RevenueRecognitionJSONBody
+
 // TransferCommandJSONRequestBody defines body for TransferCommand for application/json ContentType.
 type TransferCommandJSONRequestBody = TransferCommandJSONBody
+
+// UnreservationOfFundsJSONRequestBody defines body for UnreservationOfFunds for application/json ContentType.
+type UnreservationOfFundsJSONRequestBody = UnreservationOfFundsJSONBody
