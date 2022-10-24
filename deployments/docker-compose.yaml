@@ -10,10 +10,12 @@ services:
       dockerfile: build/package/Dockerfile
     ports:
       - "9090:9090"
+      - "4000:4000"
     volumes: 
       - "../.env:/.env"  
     depends_on:
-      - postgres  
+      - postgres
+    restart: on-failure    
 
 
   postgres:

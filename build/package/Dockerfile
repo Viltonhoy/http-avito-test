@@ -14,6 +14,6 @@ RUN CGO_ENABLED=0 go build \
 FROM gcr.io/distroless/static-debian11
 WORKDIR /
 COPY --from=builder /app /app
-EXPOSE 9090
+EXPOSE 9090 4000
 USER nobody:nobody
 ENTRYPOINT ["/app"]
