@@ -51,6 +51,10 @@ func New(logger *zap.Logger, storage *storage.Storage, afterShutdown func(), e E
 	mux.HandleFunc("/transf", h.TransferCommand)
 	mux.HandleFunc("/history", h.ReadUserHistory)
 	mux.HandleFunc("/withdrawal", h.AccountWithdrawal)
+	mux.HandleFunc("/reserve", h.ReservationOfFunds)
+	mux.HandleFunc("/revenue", h.RevenueRecognition)
+	mux.HandleFunc("/unreserve", h.UnreservationOfFunds)
+	mux.HandleFunc("/report", h.MonthlyReport)
 
 	httpServer := http.Server{
 		Handler:      mux,
