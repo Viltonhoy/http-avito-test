@@ -20,7 +20,10 @@ type Storage struct {
 	DB     *pgxpool.Pool
 }
 
-const cacheBookAccountID = int64(0)
+const (
+	cacheBookAccountID = int64(0)
+	reserveAccountID   = int64(1)
+)
 
 const updateRollUpTable = `
 	with var1 as (
@@ -39,13 +42,17 @@ const updateRollUpTable = `
 	set last_tx_id = (select * from var1),
 	balance = (select * from var2) + (select balance from balances where account_id = $1) returning balance`
 
-var ErrUserAvailability = errors.New("sender does not exist")
-
 var (
-	ErrWithdrawal    = errors.New("not enough money to withdraw")
-	ErrTransfer      = errors.New("not enough money to transfer")
-	ErrNoUser        = errors.New("user does not exist")
-	ErrSerialization = errors.New("serialization level error")
+	ErrNoRecords        = errors.New("consolidated report records do not exist")
+	ErrRecordExist      = errors.New("unreserve record or consolidated report record already exists")
+	ErrReserveExist     = errors.New("reserve record does not exists")
+	ErrRevenue          = errors.New("not enough money for recognition")
+	ErrUserAvailability = errors.New("sender does not exist")
+	ErrOrderId          = errors.New("the order id already exists")
+	ErrWithdrawal       = errors.New("not enough money to withdraw")
+	ErrTransfer         = errors.New("not enough money to transfer")
+	ErrNoUser           = errors.New("user does not exist")
+	ErrSerialization    = errors.New("serialization level error")
 )
 
 // NewStore constructs Store instance with configured logger
@@ -268,16 +275,26 @@ func (s *Storage) Withdrawal(ctx context.Context, userID int64, amount decimal.D
 }
 
 // transfer performs the transfer of money from sender to recipient
-func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount decimal.Decimal, description *string) error {
+func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount decimal.Decimal, description *string, options ...TxOption) (int64, int64, error) {
 	logger := s.Logger.With(zap.Int64("senderID", sender), zap.Int64("recipientID", recipient))
 	logger.Debug("money transfer")
 
 	var now = time.Now()
 
 	// start transaction with transaction isolation level options
-	tx, err := s.DB.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	txOptions := buildOptions(options...)
+	var tx pgx.Tx
+	var err error
+	if txOptions.runAsChild {
+		s.Logger.Debug("Running Transfer as nested transaction")
+		tx, err = txOptions.parentTx.Begin(ctx)
+	} else {
+		s.Logger.Debug("Running Transfer as stand-alone transaction")
+		tx, err = s.DB.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	}
+
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
 	defer func() {
@@ -294,63 +311,66 @@ func (s *Storage) Transfer(ctx context.Context, sender, recipient int64, amount 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.SerializationFailure {
 			logger.Warn("transaction isolation level error", zap.Error(err))
-			return ErrSerialization
+			return 0, 0, ErrSerialization
 		}
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NotNullViolation {
 			logger.Error("error returning user balance with specified id: user does not exist", zap.Error(err))
-			return ErrUserAvailability
+			return 0, 0, ErrUserAvailability
 		}
 		logger.Error("error returning user balance with specified id", zap.Error(err))
-		return err
+		return 0, 0, err
 	}
 
 	// checking the condition that the balance is greater than or equal to the amount
 	if amount.GreaterThan(balance.Balance) {
 		logger.Error("insufficient funds on the sender's account", zap.Error(ErrTransfer))
-		return ErrTransfer
+		return 0, 0, ErrTransfer
 	}
 
-	// deducts money from the sender account
-	firstInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee, description) 
-			VALUES ($1, $6, $4, -1 * $2, $3, $5, $7);`
+	var sendOperationId int64
+	var receiveOperationId int64
 
-	_, err = tx.Exec(
+	// deducts money from the sender account
+	firstInsertQuery := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee, description) 
+			VALUES ($1, $6, $4, -1 * $2, $3, $5, $7) RETURNING id;`
+
+	err = tx.QueryRow(
 		ctx,
-		firstInsertExec,
+		firstInsertQuery,
 		sender,
 		amount,
 		now.Format(time.RFC3339),
 		now,
-		sender,
+		recipient,
 		OperationTypeTransfer,
 		description,
-	)
+	).Scan(&sendOperationId)
 	if err != nil {
 		logger.Error("failed to insert record", zap.Error(err))
-		return err
+		return 0, 0, err
 	}
 
 	// charge funds to the recipient account
 	secondInsertExec := `INSERT INTO posting (account_id, cb_journal, accounting_period, amount, date, addressee) 
-			VALUES ($1, $6, $4, $2, $3, $5);`
+			VALUES ($1, $6, $4, $2, $3, $5) RETURNING id;`
 
-	_, err = tx.Exec(
+	err = tx.QueryRow(
 		ctx,
 		secondInsertExec,
 		recipient,
 		amount,
 		now.Format(time.RFC3339),
 		now,
-		recipient,
+		sender,
 		OperationTypeTransfer,
-	)
+	).Scan(&receiveOperationId)
 	if err != nil {
 		logger.Error("failed to insert record", zap.Error(err))
-		return err
+		return 0, 0, err
 	}
 
 	err = tx.Commit(ctx)
-	return err
+	return sendOperationId, receiveOperationId, err
 }
 
 // ReadUserHistoryList returns the user's sorted transaсtion history
@@ -386,13 +406,12 @@ func (s *Storage) ReadUserHistoryList(
 	).Scan(&userExist)
 
 	if err != nil {
+		if !userExist {
+			logger.Error("error returning user with specified id: user does not exist", zap.Error(ErrNoUser))
+			return nil, ErrNoUser
+		}
 		logger.Error("QueryRow error", zap.Error(err))
 		return nil, err
-	}
-
-	if !userExist {
-		logger.Error("error returning user with specified id: user does not exist", zap.Error(ErrNoUser))
-		return nil, ErrNoUser
 	}
 
 	var sql string
